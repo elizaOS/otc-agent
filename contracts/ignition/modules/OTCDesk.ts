@@ -1,14 +1,14 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const USDC_DECIMALS = 6n;
-const ELIZA_DECIMALS = 18n;
+const ELIZAOS_DECIMALS = 18n;
 
 const OTCModule = buildModule("OTCModule", (m) => {
   const owner = m.getAccount(0);
   const agent = m.getAccount(1);
 
-  const tokenSupply = m.getParameter("tokenSupply", 1_000_000n * 10n ** ELIZA_DECIMALS);
-  const eliza = m.contract("MockERC20", ["ELIZA", "ELIZA", Number(ELIZA_DECIMALS), tokenSupply], { id: "eliza_token", from: owner });
+  const tokenSupply = m.getParameter("tokenSupply", 1_000_000n * 10n ** ELIZAOS_DECIMALS);
+  const eliza = m.contract("MockERC20", ["ElizaOS", "ElizaOS", Number(ELIZAOS_DECIMALS), tokenSupply], { id: "eliza_token", from: owner });
   const usdc = m.contract("MockERC20", ["USD Coin", "USDC", Number(USDC_DECIMALS), 0n], { id: "usdc_token", from: owner });
 
   // Deploy mock Chainlink feeds: 8 decimals
@@ -25,7 +25,7 @@ const OTCModule = buildModule("OTCModule", (m) => {
 
   // Set default limits
   const MIN_USD_5 = 5n * 10n ** 8n;
-  const MAX_TOKENS = 10_000n * 10n ** ELIZA_DECIMALS;
+  const MAX_TOKENS = 10_000n * 10n ** ELIZAOS_DECIMALS;
   const EXPIRY = 30n * 60n; // 30 minutes
   const UNLOCK_DELAY = 0n;
   m.call(desk, "setLimits", [MIN_USD_5, MAX_TOKENS, EXPIRY, UNLOCK_DELAY], { id: "set_limits", from: owner });

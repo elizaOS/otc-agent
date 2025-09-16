@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# ELIZA OTC System - Complete Startup Script
-# This script deploys and starts the entire ELIZA financial system
+# ElizaOS OTC System - Complete Startup Script
+# This script deploys and starts the entire ElizaOS financial system
 
 set -e
 
@@ -61,7 +61,7 @@ wait_for_service() {
 
 # Main execution
 main() {
-    header "🚀 ELIZA SYSTEM STARTUP"
+    header "🚀 ElizaOS SYSTEM STARTUP"
     
     # Step 1: Check environment
     log "1️⃣ Checking environment..." "$BLUE"
@@ -120,8 +120,8 @@ main() {
         fi
     fi
     
-    # Step 5: Deploy ELIZA OTC contracts
-    log "\n5️⃣ Deploying ELIZA OTC contracts..." "$BLUE"
+    # Step 5: Deploy ElizaOS OTC contracts
+    log "\n5️⃣ Deploying ElizaOS OTC contracts..." "$BLUE"
     
     if [ -f "$PROJECT_ROOT/contracts/deployments/eliza-otc-deployment.json" ]; then
         log "  Contracts already deployed, skipping..." "$YELLOW"
@@ -167,7 +167,7 @@ main() {
         DEPLOYMENT_INFO=$(cat "$PROJECT_ROOT/contracts/deployments/eliza-otc-deployment.json")
         TEST_WALLET=$(echo "$DEPLOYMENT_INFO" | grep -o '"testWallet"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
         OTC_ADDRESS=$(echo "$DEPLOYMENT_INFO" | grep -o '"otc"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
-        ELIZA_ADDRESS=$(echo "$DEPLOYMENT_INFO" | grep -o '"elizaToken"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+        ELIZAOS_ADDRESS=$(echo "$DEPLOYMENT_INFO" | grep -o '"elizaToken"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
     fi
     
     # Final Summary
@@ -175,7 +175,7 @@ main() {
     
     log "${BOLD}📊 System Status:${NC}" "$GREEN"
     log "  • Hardhat Node: ${GREEN}✓ Running${NC}"
-    log "  • ELIZA Token: ${GREEN}✓ Deployed${NC}"
+    log "  • ElizaOS Token: ${GREEN}✓ Deployed${NC}"
     log "  • OTC Contract: ${GREEN}✓ Deployed${NC}"
     log "  • Approval Worker: ${GREEN}✓ Active${NC}"
     log "  • Next.js App: ${GREEN}✓ Running${NC}"
@@ -189,7 +189,7 @@ main() {
     if [ ! -z "$OTC_ADDRESS" ]; then
         echo
         log "${BOLD}📝 Contract Addresses:${NC}" "$YELLOW"
-        log "  • ELIZA Token: ${CYAN}$ELIZA_ADDRESS${NC}"
+        log "  • ElizaOS Token: ${CYAN}$ELIZAOS_ADDRESS${NC}"
         log "  • OTC Contract: ${CYAN}$OTC_ADDRESS${NC}"
     fi
     

@@ -1,9 +1,9 @@
-// Quote history tracking service for ELIZA OTC desk
+// Quote history tracking service for ElizaOS OTC desk
 
 export interface QuoteHistoryEntry {
   quoteId: string;
   userId: string;
-  tokenAmount: string; // Always ELIZA
+  tokenAmount: string; // Always ElizaOS
   discountBps: number;
   paymentCurrency: "ETH" | "USDC";
   priceUsdPerToken: number;
@@ -127,7 +127,7 @@ export function getQuoteById(
 }
 
 /**
- * Get statistics for user's ELIZA quotes
+ * Get statistics for user's ElizaOS quotes
  */
 export function getUserQuoteStats(userId: string): {
   total: number;

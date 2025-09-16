@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ELIZA OTC System - Verification Script
+# ElizaOS OTC System - Verification Script
 # Checks that all components are properly installed and configured
 
 set -e
@@ -280,7 +280,7 @@ verify_tests() {
 
 # Main verification
 main() {
-    header "🔍 ELIZA SYSTEM VERIFICATION"
+    header "🔍 ElizaOS SYSTEM VERIFICATION"
     
     local total_checks=0
     local passed_checks=0

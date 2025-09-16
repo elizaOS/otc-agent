@@ -64,7 +64,6 @@ export const LandingTextarea = () => {
         const result = await response.json();
         const sessionId = result.data.sessionId;
 
-
         // Navigate to the new session
         push(`/chat/${sessionId}`);
       } catch (error) {
@@ -136,6 +135,7 @@ export const LandingTextarea = () => {
                 aria-label="Prompt"
                 value={input}
                 onChange={handleInputChange}
+                data-testid="landing-textarea"
                 placeholder="Negotiate a better rate..."
                 className={clsx([
                   "size-full bg-transparent",

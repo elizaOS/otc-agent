@@ -23,7 +23,7 @@ if (typeof globalAny.__elizaManagerLogged === "undefined")
 async function tableExists(table: string): Promise<boolean> {
   try {
     const res = await (db as any).execute?.(
-      sql.raw(`SELECT to_regclass('public.${table}') IS NOT NULL AS exists`)
+      sql.raw(`SELECT to_regclass('public.${table}') IS NOT NULL AS exists`),
     );
     const rows = (res as any)?.rows;
     return !!rows?.[0]?.exists;
@@ -124,7 +124,7 @@ class AgentRuntimeManager {
       } catch (migrationError) {
         console.warn(
           "[AgentRuntime] Built-in table migration warning:",
-          migrationError
+          migrationError,
         );
       }
 
@@ -146,12 +146,12 @@ class AgentRuntimeManager {
       // Try to ensure pgvector extension exists (if available)
       try {
         await (db as any).execute?.(
-          sql.raw("CREATE EXTENSION IF NOT EXISTS vector")
+          sql.raw("CREATE EXTENSION IF NOT EXISTS vector"),
         );
       } catch (extErr) {
         console.warn(
           "[AgentRuntime] Could not create pgvector extension (may not be installed):",
-          extErr
+          extErr,
         );
       }
 
@@ -167,7 +167,7 @@ class AgentRuntimeManager {
             created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
             updated_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
-        `)
+        `),
         );
         await (db as any).execute?.(
           sql.raw(`
@@ -180,12 +180,12 @@ class AgentRuntimeManager {
             is_agent boolean DEFAULT false NOT NULL,
             created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
           )
-        `)
+        `),
         );
       } catch (coreErr) {
         console.warn(
           "[AgentRuntime] Failed ensuring core tables (conversations/messages):",
-          coreErr
+          coreErr,
         );
       }
 
@@ -198,7 +198,7 @@ class AgentRuntimeManager {
       migrationService.discoverAndRegisterPluginSchemas(agent.plugins || []);
       await migrationService.runAllPluginMigrations();
       console.log(
-        "[AgentRuntime] Ensured built-in plugin tables via migrations"
+        "[AgentRuntime] Ensured built-in plugin tables via migrations",
       );
 
       // Ensure app tables (quotes, user_sessions) exist (idempotent)
@@ -236,7 +236,7 @@ class AgentRuntimeManager {
               rejection_reason text,
               approval_note text
             )
-          `)
+          `),
           );
         }
 
@@ -258,13 +258,13 @@ class AgentRuntimeManager {
               created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
               updated_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
             )
-          `)
+          `),
           );
         }
       } catch (appTableErr) {
         console.warn(
           "[AgentRuntime] Failed ensuring app tables (quotes/user_sessions):",
-          appTableErr
+          appTableErr,
         );
       }
 
@@ -273,7 +273,7 @@ class AgentRuntimeManager {
     } catch (error) {
       console.warn(
         "[AgentRuntime] Failed to ensure built-in plugin tables:",
-        error
+        error,
       );
       // Fallback: minimally ensure agents table exists to allow runtime init to proceed
       try {
@@ -284,19 +284,19 @@ class AgentRuntimeManager {
             name text NOT NULL,
             bio jsonb
           )
-        `)
+        `),
         );
       } catch (fallbackError) {
         console.warn(
           "[AgentRuntime] Fallback agents table creation failed:",
-          fallbackError
+          fallbackError,
         );
       }
     }
   }
 
   private async ensureAgentAndRoomRecords(
-    conversationId: string
+    conversationId: string,
   ): Promise<void> {
     try {
       // Ensure agent row exists for runtime.agentId
@@ -305,8 +305,8 @@ class AgentRuntimeManager {
         await (db as any).execute?.(
           sql.raw(
             `INSERT INTO agents (id, name, enabled) VALUES ('${this.runtime.agentId}', '${safeName}', true)
-           ON CONFLICT (id) DO NOTHING`
-          )
+           ON CONFLICT (id) DO NOTHING`,
+          ),
         );
       }
       // Ensure room row exists for this conversation (used by plugin tables)
@@ -314,8 +314,8 @@ class AgentRuntimeManager {
         await (db as any).execute?.(
           sql.raw(
             `INSERT INTO rooms (id, "agentId", source, "type") VALUES ('${conversationId}', '${this.runtime?.agentId ?? ""}', 'web', 'chat')
-           ON CONFLICT (id) DO NOTHING`
-          )
+           ON CONFLICT (id) DO NOTHING`,
+          ),
         );
       }
     } catch (err) {
@@ -329,7 +329,7 @@ class AgentRuntimeManager {
     userId: string,
     content: { text?: string; attachments?: any[] },
     agentId?: string,
-    clientMessageId?: string
+    clientMessageId?: string,
   ): Promise<Message> {
     // store raw input; display sanitization occurs in providers
 
@@ -342,7 +342,7 @@ class AgentRuntimeManager {
       if (!existing) {
         console.log(
           "[AgentRuntime] Conversation not found. Creating new conversation:",
-          conversationId
+          conversationId,
         );
         const newConversation: NewConversation = {
           id: conversationId,
@@ -354,7 +354,7 @@ class AgentRuntimeManager {
     } catch (convError) {
       console.error(
         "[AgentRuntime] Error ensuring conversation exists:",
-        convError
+        convError,
       );
       throw convError;
     }
@@ -377,7 +377,7 @@ class AgentRuntimeManager {
       insertedUserMessage = result[0];
       console.log(
         "[AgentRuntime] User message inserted:",
-        insertedUserMessage?.id
+        insertedUserMessage?.id,
       );
     } catch (error) {
       console.error("[AgentRuntime] Error inserting user message:", error);
@@ -422,14 +422,14 @@ class AgentRuntimeManager {
           try {
             console.log(
               "[AgentRuntime] Inserting agent message:",
-              agentMessage.id
+              agentMessage.id,
             );
             await db.insert(messages).values(agentMessage);
             console.log("[AgentRuntime] Agent message inserted successfully");
           } catch (error) {
             console.error(
               "[AgentRuntime] Error inserting agent message:",
-              error
+              error,
             );
           }
 
@@ -447,7 +447,7 @@ class AgentRuntimeManager {
     } catch (error) {
       console.error(
         "[AgentRuntime] Error during MESSAGE_RECEIVED handling:",
-        error
+        error,
       );
     }
 
@@ -458,7 +458,7 @@ class AgentRuntimeManager {
   public async getConversationMessages(
     conversationId: string,
     limit = 50,
-    afterTimestamp?: number
+    afterTimestamp?: number,
   ): Promise<Message[]> {
     const baseWhere = eq(messages.conversationId, conversationId);
     const whereClause = afterTimestamp
@@ -498,14 +498,14 @@ class AgentRuntimeManager {
       .where(eq(conversations.userId, userId))
       .orderBy(
         desc(conversations.lastMessageAt),
-        desc(conversations.createdAt)
+        desc(conversations.createdAt),
       );
 
     return userConversations;
   }
 
   public async getConversation(
-    conversationId: string
+    conversationId: string,
   ): Promise<Conversation | undefined> {
     const [conversation] = await db
       .select()

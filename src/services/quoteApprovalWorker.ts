@@ -216,7 +216,6 @@ export class QuoteApprovalWorker {
 
         // Send real-time notification to user
         this.notifyApproval(quote.userId, quote.quoteId, offerIdStr, hash);
-
       } else {
         throw new Error(`Transaction failed: ${hash}`);
       }
@@ -294,7 +293,7 @@ export class QuoteApprovalWorker {
         userId: quote.userId,
         quoteId: quote.quoteId,
         offerId,
-        message: "🎉 Congratulations! Your ELIZA deal is complete!",
+        message: "🎉 Congratulations! Your ElizaOS deal is complete!",
         type: "deal_completed",
         dealSummary: {
           tokenAmount: completionData.tokenAmount,

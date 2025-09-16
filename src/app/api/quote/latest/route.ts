@@ -5,7 +5,9 @@ import { agentRuntime } from "@/lib/agent-runtime";
 export async function GET(request: NextRequest) {
   try {
     // Ensure runtime init has run to create required tables
-    try { await agentRuntime.getRuntime(); } catch {}
+    try {
+      await agentRuntime.getRuntime();
+    } catch {}
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -36,7 +38,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Ensure runtime init has run to create required tables
-    try { await agentRuntime.getRuntime(); } catch {}
+    try {
+      await agentRuntime.getRuntime();
+    } catch {}
     const body = await request.json();
     const { quoteId, beneficiary } = body;
 
@@ -48,7 +52,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the beneficiary and signature for this quote
-    const updated = await QuoteService.setQuoteBeneficiary(quoteId, beneficiary);
+    const updated = await QuoteService.setQuoteBeneficiary(
+      quoteId,
+      beneficiary,
+    );
 
     return NextResponse.json({ success: true, quote: updated });
   } catch (error) {
@@ -62,5 +69,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

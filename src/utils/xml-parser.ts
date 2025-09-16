@@ -58,15 +58,17 @@ export function extractXMLFromMessage(messageText: string): string | null {
     return commentMatch[1].trim();
   }
 
-  // Try to find quote XML
-  const quoteMatch = messageText.match(/<quote>([\s\S]*?)<\/quote>/);
+  // Try to find quote XML (supports lower and PascalCase)
+  const quoteMatch = messageText.match(
+    /<(quote|Quote)>([\s\S]*?)<\/(quote|Quote)>/,
+  );
   if (quoteMatch && quoteMatch[0]) {
     return quoteMatch[0];
   }
 
-  // Try to find quoteAccepted XML
+  // Try to find quoteAccepted XML (supports lower and PascalCase)
   const acceptedMatch = messageText.match(
-    /<quoteAccepted>([\s\S]*?)<\/quoteAccepted>/,
+    /<(quoteAccepted|QuoteAccepted)>([\s\S]*?)<\/(quoteAccepted|QuoteAccepted)>/,
   );
   if (acceptedMatch && acceptedMatch[0]) {
     return acceptedMatch[0];
@@ -100,9 +102,9 @@ export function parseOTCQuoteXML(xmlString: string): OTCQuote | null {
       return text ? parseFloat(text) : 0;
     };
 
-    // Support both quote and quote tags
+    // Support both lowercase and PascalCase root tags
     const rootTag =
-      xmlDoc.querySelector("quote") || xmlDoc.querySelector("quote");
+      xmlDoc.querySelector("Quote") || xmlDoc.querySelector("quote");
     if (!rootTag) {
       console.error("No quote root element found");
       return null;
@@ -216,7 +218,7 @@ export function parseMessageXML(messageText: string): {
   }
 
   // Try parsing as quote
-  if (xmlString.includes("<quote>") || xmlString.includes("<quote>")) {
+  if (xmlString.match(/<(quote|Quote)>/)) {
     const quote = parseOTCQuoteXML(xmlString);
     if (quote) {
       return { type: "otc_quote", data: quote };
@@ -224,7 +226,7 @@ export function parseMessageXML(messageText: string): {
   }
 
   // Try parsing as quote accepted
-  if (xmlString.includes("<quoteAccepted>")) {
+  if (xmlString.match(/<(quoteAccepted|QuoteAccepted)>/)) {
     const accepted = parseQuoteAcceptedXML(xmlString);
     if (accepted) {
       return { type: "quote_accepted", data: accepted };
@@ -243,9 +245,7 @@ export function parseMessageXML(messageText: string): {
  * Returns both sanitized visible text and any extracted meta blocks that
  * callers may optionally display (e.g., a collapsed "reasoning" panel).
  */
-export function sanitizeAgentMessage(
-  raw: string | null | undefined,
-): {
+export function sanitizeAgentMessage(raw: string | null | undefined): {
   visibleText: string;
   meta: {
     thought?: string;
@@ -271,7 +271,9 @@ export function sanitizeAgentMessage(
 
     // Extract nested tags from response content
     const nestedExtract = (tag: string) => {
-      const m = inner.match(new RegExp(`<${tag}>([\\n\\s\\S]*?)<\/${tag}>`, "i"));
+      const m = inner.match(
+        new RegExp(`<${tag}>([\\n\\s\\S]*?)<\/${tag}>`, "i"),
+      );
       if (m && m[1] !== undefined) meta[tag] = m[1].trim();
     };
     ["thought", "actions", "providers", "text"].forEach(nestedExtract);
@@ -289,55 +291,59 @@ export function sanitizeAgentMessage(
   };
 
   // Known custom tags to extract
-  ["thought", "actions", "providers", "instructions", "keys", "output", "text"].forEach(
-    extractTag,
-  );
+  [
+    "thought",
+    "actions",
+    "providers",
+    "instructions",
+    "keys",
+    "output",
+    "text",
+  ].forEach(extractTag);
 
   // Strip any remaining unknown angle-bracket blocks that look like custom tags
   // but keep known markdown/HTML tags intact by being conservative: remove tags that
   // are a single lowercase word without attributes, e.g., <foo>...</foo>
-  const stripUnknownTags = (s: string) => s.replace(/<([a-z]+)>[\s\S]*?<\/\1>/g, (m, tag) => {
-    const allowList = new Set([
-      // basic inline/blocks typically used by markdown-to-jsx
-      "p",
-      "em",
-      "strong",
-      "code",
-      "pre",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "blockquote",
-      "hr",
-      "br",
-      "img",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "th",
-      "td",
-    ]);
-    return allowList.has(String(tag)) ? m : "";
-  });
+  const stripUnknownTags = (s: string) =>
+    s.replace(/<([a-z]+)>[\s\S]*?<\/\1>/g, (m, tag) => {
+      const allowList = new Set([
+        // basic inline/blocks typically used by markdown-to-jsx
+        "p",
+        "em",
+        "strong",
+        "code",
+        "pre",
+        "ul",
+        "ol",
+        "li",
+        "a",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "blockquote",
+        "hr",
+        "br",
+        "img",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
+      ]);
+      return allowList.has(String(tag)) ? m : "";
+    });
   working = stripUnknownTags(working);
 
   // Also remove any self-closing unknown tags like <foo/> safely
-  const stripUnknownSelfClosing = (s: string) => s.replace(/<([a-z]+)\s*\/>/g, (m, tag) => {
-    const allowList = new Set([
-      "br",
-      "hr",
-      "img",
-    ]);
-    return allowList.has(String(tag)) ? m : "";
-  });
+  const stripUnknownSelfClosing = (s: string) =>
+    s.replace(/<([a-z]+)\s*\/>/g, (m, tag) => {
+      const allowList = new Set(["br", "hr", "img"]);
+      return allowList.has(String(tag)) ? m : "";
+    });
   working = stripUnknownSelfClosing(working);
 
   // Trim excessive blank lines left over from removals

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/button";
 import { useRouter } from "next/navigation";
 import { DealCompletionService } from "@/services/database";
-
+import { createDealShareImage } from "@/utils/share-card";
 
 interface DealCompletionProps {
   quote: {
@@ -32,9 +32,7 @@ export function DealCompletion({ quote }: DealCompletionProps) {
   // Calculate discount-derived metrics
   const discountPercent = quote.discountBps / 100;
   const projectedYield = 0; // No yield; discount-only instrument
-  const breakEvenDays = Math.ceil(
-    0,
-  );
+  const breakEvenDays = Math.ceil(0);
   const roi = (quote.discountUsd / quote.discountedUsd) * 100;
 
   const maturityDate = new Date();
@@ -65,114 +63,13 @@ export function DealCompletion({ quote }: DealCompletionProps) {
   const generateShareImage = async () => {
     setIsGeneratingImage(true);
     try {
-      // Generate P&L card image using canvas
-      const canvas = document.createElement("canvas");
-      canvas.width = 1200;
-      canvas.height = 630;
-      const ctx = canvas.getContext("2d");
-
-      if (ctx) {
-        // Background gradient
-        const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
-        gradient.addColorStop(0, "#1a1a2e");
-        gradient.addColorStop(1, "#0f0f23");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 1200, 630);
-
-        // Add grid pattern
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 1200; i += 50) {
-          ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, 630);
-          ctx.stroke();
-        }
-        for (let i = 0; i < 630; i += 50) {
-          ctx.beginPath();
-          ctx.moveTo(0, i);
-          ctx.lineTo(1200, i);
-          ctx.stroke();
-        }
-
-        // Title
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 48px Inter, sans-serif";
-        ctx.fillText("Agent OTC Deal", 60, 80);
-
-        // Success badge
-        ctx.fillStyle = "#10b981";
-        ctx.fillRect(60, 110, 150, 40);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px Inter, sans-serif";
-        ctx.fillText("EXECUTED", 85, 137);
-
-        // Main metrics
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "36px Inter, sans-serif";
-        ctx.fillText(
-          `Token Amount: ${parseFloat(quote.tokenAmount).toLocaleString()} ELIZA`,
-          60,
-          220,
-        );
-
-        // P&L Box
-        ctx.strokeStyle = "#10b981";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(60, 260, 520, 300);
-
-        ctx.fillStyle = "#10b981";
-        ctx.font = "bold 32px Inter, sans-serif";
-        ctx.fillText("P&L SUMMARY", 80, 310);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "28px Inter, sans-serif";
-        ctx.fillText(`Paid: $${quote.discountedUsd.toFixed(2)}`, 80, 360);
-        ctx.fillText(`Market Value: $${quote.totalUsd.toFixed(2)}`, 80, 400);
-
-        ctx.fillStyle = "#10b981";
-        ctx.font = "bold 32px Inter, sans-serif";
-        ctx.fillText(`Instant Save: $${quote.discountUsd.toFixed(2)}`, 80, 450);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "28px Inter, sans-serif";
-        ctx.fillText(`Total Discount: ${discountPercent.toFixed(2)}%`, 80, 500);
-        ctx.fillText(`ROI on Discount: ${roi.toFixed(1)}%`, 80, 540);
-
-        // Terms Box
-        ctx.strokeStyle = "#3b82f6";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(620, 260, 520, 300);
-
-        ctx.fillStyle = "#3b82f6";
-        ctx.font = "bold 32px Inter, sans-serif";
-        ctx.fillText("DEAL TERMS", 640, 310);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "28px Inter, sans-serif";
-        ctx.fillText(`Discount: ${discountPercent.toFixed(2)}%`, 640, 360);
-        ctx.fillText(`Lockup: ${quote.lockupMonths} months`, 640, 400);
-        ctx.fillText(`Break-even: N/A`, 640, 440);
-        ctx.fillText(
-          `Maturity: ${maturityDate.toLocaleDateString()}`,
-          640,
-          520,
-        );
-
-        // Footer
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.font = "20px Inter, sans-serif";
-        ctx.fillText("eliza.fun | AI-Powered OTC Trading", 60, 590);
-        ctx.fillText(`Deal ID: ${quote.quoteId}`, 900, 590);
-
-        // Convert to blob and create URL
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob);
-            setShareImageUrl(url);
-          }
-        }, "image/png");
-      }
+      const { dataUrl } = await createDealShareImage({
+        tokenAmount: parseFloat(quote.tokenAmount),
+        discountBps: quote.discountBps,
+        lockupMonths: quote.lockupMonths,
+        paymentCurrency: quote.paymentCurrency as "ETH" | "USDC",
+      });
+      setShareImageUrl(dataUrl);
     } catch (error) {
       console.error("Failed to generate share image:", error);
     } finally {
@@ -181,33 +78,56 @@ export function DealCompletion({ quote }: DealCompletionProps) {
   };
 
   const shareToTwitter = async () => {
-    const text = `Just secured an ELIZA OTC deal!
-
-💰 Saved: $${quote.discountUsd.toFixed(2)} (${(quote.discountBps / 100).toFixed(1)}% discount)
-⏱️ Lockup: ${quote.lockupMonths} months
-💎 Discount ROI: ${roi.toFixed(1)}%
-
-Get your deal at eliza.fun`;
-
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
-
-    // Track share
     try {
+      // Generate fresh share image
+      const { file, dataUrl } = await createDealShareImage({
+        tokenAmount: parseFloat(quote.tokenAmount),
+        discountBps: quote.discountBps,
+        lockupMonths: quote.lockupMonths,
+        paymentCurrency: quote.paymentCurrency as "ETH" | "USDC",
+      });
+
+      const text = `Just secured ${parseFloat(quote.tokenAmount).toLocaleString()} ElizaOS at ${(quote.discountBps / 100).toFixed(0)}% discount on ElizaOS OTC Desk!
+
+💰 Saved: $${quote.discountUsd.toFixed(2)}
+⏱️ Lockup: ${quote.lockupMonths} months
+💎 ROI: ${roi.toFixed(1)}%`;
+
+      // Try native share first
+      if (
+        typeof navigator !== "undefined" &&
+        (navigator as any).canShare &&
+        (navigator as any).canShare({ files: [file] })
+      ) {
+        await (navigator as any).share({ text, files: [file] });
+      } else {
+        // Fallback to Twitter intent
+        const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+        window.open(tweetUrl, "_blank");
+      }
+
+      // Track share
       await DealCompletionService.incrementShareCount(quote.quoteId, "twitter");
       setShareCount(shareCount + 1);
     } catch (error) {
-      console.error("Failed to track share:", error);
+      console.error("Failed to share:", error);
     }
   };
 
   const downloadImage = () => {
-    if (shareImageUrl) {
-      const a = document.createElement("a");
-      a.href = shareImageUrl;
-      a.download = `eliza-deal-${quote.quoteId}.png`;
-      a.click();
-    }
+    createDealShareImage({
+      tokenAmount: parseFloat(quote.tokenAmount),
+      discountBps: quote.discountBps,
+      lockupMonths: quote.lockupMonths,
+      paymentCurrency: quote.paymentCurrency as "ETH" | "USDC",
+    })
+      .then(({ dataUrl }) => {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `eliza-deal-${quote.quoteId}.jpg`;
+        a.click();
+      })
+      .catch(console.error);
   };
 
   const negotiateNewDeal = () => {
@@ -240,9 +160,7 @@ Get your deal at eliza.fun`;
           <h1 className="text-4xl font-bold text-white mb-2">
             Deal Executed Successfully!
           </h1>
-          <p className="text-zinc-400">
-            Your quote has been created on-chain
-          </p>
+          <p className="text-zinc-400">Your quote has been created on-chain</p>
           {quote.transactionHash && (
             <a
               href={`https://basescan.org/tx/${quote.transactionHash}`}
@@ -303,7 +221,9 @@ Get your deal at eliza.fun`;
             {/* Right Column - Deal Terms */}
             <div className="space-y-4">
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <h3 className="text-blue-400 font-semibold mb-2">Discount ROI</h3>
+                <h3 className="text-blue-400 font-semibold mb-2">
+                  Discount ROI
+                </h3>
                 <p className="text-3xl font-bold text-white">
                   {roi.toFixed(1)}%
                 </p>
@@ -325,7 +245,7 @@ Get your deal at eliza.fun`;
                     {quote.lockupMonths} months
                   </span>
                 </div>
-                
+
                 <div className="border-t border-zinc-700 pt-2 mt-2">
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-400">Maturity Date</span>
@@ -344,7 +264,7 @@ Get your deal at eliza.fun`;
               <div>
                 <p className="text-zinc-400 text-sm">Token Amount</p>
                 <p className="text-2xl font-bold text-white">
-                  {parseFloat(quote.tokenAmount).toLocaleString()} ELIZA
+                  {parseFloat(quote.tokenAmount).toLocaleString()} ElizaOS
                 </p>
               </div>
               <div className="text-right">
@@ -375,27 +295,25 @@ Get your deal at eliza.fun`;
               Share on X
             </Button>
 
-            {shareImageUrl && (
-              <Button
-                onClick={downloadImage}
-                className="flex items-center gap-2 border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            <Button
+              onClick={downloadImage}
+              className="flex items-center gap-2 border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
-                Download P&L Card
-              </Button>
-            )}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Download Deal Card
+            </Button>
 
             {shareCount > 0 && (
               <span className="text-zinc-400 text-sm self-center ml-2">

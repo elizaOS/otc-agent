@@ -1,14 +1,14 @@
-// Price feed service for fetching real-time ELIZA token price
+// Price feed service for fetching real-time ElizaOS token price
 
 interface PriceCache {
   price: number;
   timestamp: number;
 }
 
-// ELIZA token configuration
-export const ELIZA_TOKEN = {
-  symbol: "ELIZA",
-  name: "ELIZA",
+// ElizaOS token configuration
+export const ELIZAOS_TOKEN = {
+  symbol: "ElizaOS",
+  name: "ElizaOS",
   decimals: 5,
   coingeckoId: "eliza",
 } as const;
@@ -18,16 +18,16 @@ const priceCache = new Map<string, PriceCache>();
 const CACHE_TTL = 60 * 1000; // 60 seconds
 
 // Fallback price for development/testing
-const FALLBACK_ELIZA_PRICE = 0.00005; // $0.00005 per ELIZA
+const FALLBACK_ELIZAOS_PRICE = 0.00005; // $0.00005 per ElizaOS
 const FALLBACK_ETH_PRICE = 3500; // $3500 per ETH
 
 /**
- * Fetch ELIZA price from CoinGecko API
+ * Fetch ElizaOS price from CoinGecko API
  */
 async function fetchElizaPriceFromCoinGecko(): Promise<number | null> {
   try {
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ELIZA_TOKEN.coingeckoId}&vs_currencies=usd`,
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ELIZAOS_TOKEN.coingeckoId}&vs_currencies=usd`,
       {
         headers: {
           Accept: "application/json",
@@ -36,30 +36,30 @@ async function fetchElizaPriceFromCoinGecko(): Promise<number | null> {
     );
 
     if (!response.ok) {
-      console.warn(`CoinGecko API returned ${response.status} for ELIZA`);
+      console.warn(`CoinGecko API returned ${response.status} for ElizaOS`);
       return null;
     }
 
     const data = await response.json();
-    const price = data[ELIZA_TOKEN.coingeckoId]?.usd;
+    const price = data[ELIZAOS_TOKEN.coingeckoId]?.usd;
 
     if (typeof price !== "number") {
-      console.warn(`Invalid price data for ELIZA:`, data);
+      console.warn(`Invalid price data for ElizaOS:`, data);
       return null;
     }
 
     return price;
   } catch (error) {
-    console.error(`Failed to fetch ELIZA price:`, error);
+    console.error(`Failed to fetch ElizaOS price:`, error);
     return null;
   }
 }
 
 /**
- * Get ELIZA token price with caching and fallback
+ * Get ElizaOS token price with caching and fallback
  */
 export async function getElizaPriceUsd(): Promise<number> {
-  const cacheKey = "ELIZA";
+  const cacheKey = "ElizaOS";
 
   // Check cache first
   const cached = priceCache.get(cacheKey);
@@ -80,8 +80,8 @@ export async function getElizaPriceUsd(): Promise<number> {
   }
 
   // Use fallback price
-  console.warn(`Using fallback price for ELIZA: $${FALLBACK_ELIZA_PRICE}`);
-  return FALLBACK_ELIZA_PRICE;
+  console.warn(`Using fallback price for ElizaOS: $${FALLBACK_ELIZAOS_PRICE}`);
+  return FALLBACK_ELIZAOS_PRICE;
 }
 
 /**
@@ -129,7 +129,7 @@ export async function getEthPriceUsd(): Promise<number> {
 }
 
 /**
- * Format ELIZA token amount with proper display
+ * Format ElizaOS token amount with proper display
  */
 export function formatElizaAmount(amount: string | number): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -149,7 +149,7 @@ export function formatElizaAmount(amount: string | number): string {
 }
 
 /**
- * Convert ELIZA amount to USD value
+ * Convert ElizaOS amount to USD value
  */
 export async function getElizaValueUsd(
   amount: string | number,

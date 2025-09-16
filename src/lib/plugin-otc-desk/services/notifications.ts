@@ -1,4 +1,4 @@
-// WebSocket notification service for ELIZA OTC desk quote updates
+// WebSocket notification service for ElizaOS OTC desk quote updates
 
 import { EventEmitter } from "events";
 import { QuoteHistoryEntry } from "./quoteHistory";
@@ -117,7 +117,7 @@ class NotificationService extends EventEmitter {
       data: {
         quoteId: quote.quoteId,
         quote,
-        message: `New ELIZA quote created: ${quote.tokenAmount} ELIZA at ${(quote.discountBps || 0) / 100}% discount`,
+        message: `New ElizaOS quote created: ${quote.tokenAmount} ElizaOS at ${(quote.discountBps || 0) / 100}% discount`,
       },
     });
   }
@@ -193,7 +193,7 @@ class NotificationService extends EventEmitter {
       oldPrice,
       newPrice,
       priceChange,
-      message: `ELIZA price updated: $${oldPrice.toFixed(8)} → $${newPrice.toFixed(8)} (${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(2)}%)`,
+      message: `ElizaOS price updated: $${oldPrice.toFixed(8)} → $${newPrice.toFixed(8)} (${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(2)}%)`,
     });
   }
 }
@@ -207,7 +207,7 @@ export function formatNotification(notification: QuoteNotification): string {
 
   switch (type) {
     case "quote_created":
-      return `✅ Quote created: ${data.quote?.tokenAmount} ELIZA at ${((data.quote?.discountBps || 0) / 100).toFixed(2)}% discount`;
+      return `✅ Quote created: ${data.quote?.tokenAmount} ElizaOS at ${((data.quote?.discountBps || 0) / 100).toFixed(2)}% discount`;
 
     case "quote_accepted":
       return `🎯 Quote ${data.quoteId} accepted - pending execution`;
@@ -225,7 +225,7 @@ export function formatNotification(notification: QuoteNotification): string {
       return `❌ Quote ${data.quoteId} rejected: ${data.message}`;
 
     case "eliza_price_update":
-      return data.message || `📊 ELIZA price update`;
+      return data.message || `📊 ElizaOS price update`;
 
     default:
       return data.message || "Quote update";

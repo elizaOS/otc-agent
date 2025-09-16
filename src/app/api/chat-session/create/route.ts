@@ -22,11 +22,9 @@ export async function POST(request: NextRequest) {
     // If there's an initial message, send it
     if (initialMessage) {
       try {
-        await agentRuntime.handleMessage(
-          sessionId,
-          userId,
-          { text: initialMessage },
-        );
+        await agentRuntime.handleMessage(sessionId, userId, {
+          text: initialMessage,
+        });
       } catch (error) {
         console.error("[API] Error handling initial message:", error);
         // Continue even if initial message fails

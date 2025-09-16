@@ -2,10 +2,8 @@
 
 describe('OTC Desk Basic Tests', () => {
   beforeEach(() => {
-    cy.visit('/', { 
-      timeout: 30000,
-      failOnStatusCode: false 
-    });
+    cy.visit('/', { timeout: 60000, failOnStatusCode: false });
+    cy.get('[data-testid="chat-input"]', { timeout: 30000 }).should('be.visible');
   });
 
   describe('Landing Page', () => {

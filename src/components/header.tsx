@@ -4,99 +4,108 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { Dialog } from "@/components/dialog";
 import { DiscordIcon, XIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { WalletConnector } from "./wallet-connector";
+import { useMultiWallet } from "@/components/multiwallet";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { paymentPairLabel } = useMultiWallet();
+  const pathname = usePathname();
 
   const NavLinks = ({ mobile = false }) => (
     <>
       <Link
-        href="/my-deals"
+        href="/"
         className={clsx(
-          "text-sm font-medium",
+          "text-sm font-semibold m-1 p-1",
           mobile
-            ? "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
-            : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white",
+            ? clsx(
+                "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-900",
+                pathname === "/"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+              )
+            : clsx(
+                pathname === "/"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+                "hover:text-zinc-900 dark:hover:text-white",
+              ),
         )}
         onClick={() => setMobileMenuOpen(false)}
-     >
+        aria-current={pathname === "/" ? "page" : undefined}
+      >
+        Trading Desk
+      </Link>
+      <Link
+        href="/my-deals"
+        className={clsx(
+          "text-sm font-semibold m-1 p-1",
+          mobile
+            ? clsx(
+                "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-900",
+                pathname === "/my-deals"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+              )
+            : clsx(
+                pathname === "/my-deals"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+                "hover:text-zinc-900 dark:hover:text-white",
+              ),
+        )}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-current={pathname === "/my-deals" ? "page" : undefined}
+      >
         My Deals
       </Link>
       <Link
-        href="/explore"
+        href="/how-it-works"
         className={clsx(
-          "text-sm font-medium",
+          "text-sm font-semibold m-1 p-1",
           mobile
-            ? "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
-            : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white",
+            ? clsx(
+                "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-900",
+                pathname === "/how-it-works"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+              )
+            : clsx(
+                pathname === "/how-it-works"
+                  ? "text-zinc-900 dark:text-white"
+                  : "text-zinc-600 dark:text-zinc-400",
+                "hover:text-zinc-900 dark:hover:text-white",
+              ),
         )}
         onClick={() => setMobileMenuOpen(false)}
+        aria-current={pathname === "/how-it-works" ? "page" : undefined}
       >
-        Explore
+        How It Works
       </Link>
-      <a
-        href="https://docs.eliza.how/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={clsx(
-          "text-sm font-medium flex items-center",
-          mobile
-            ? "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
-            : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white",
-        )}
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        Docs
-      </a>
-      <a
-        href="https://twitter.com/elizaos"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={clsx(
-          "text-sm font-medium flex items-center",
-          mobile
-            ? "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
-            : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white",
-        )}
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        <XIcon className="h-4 w-4" />
-      </a>
-      <a
-        href="https://discord.gg/elizaos"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={clsx(
-          "text-sm font-medium flex items-center",
-          mobile
-            ? "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900"
-            : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-white",
-        )}
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        <DiscordIcon className="h-5 w-5" />
-      </a>
     </>
   );
 
   return (
-    <header className="left-0 right-0 z-10 bg-white dark:bg-black">
+    <header className="sticky top-0 left-0 right-0 z-20 bg-white dark:bg-black">
       <nav className="px-4 lg:px-6 w-full" aria-label="Global">
-        <div className="flex items-center justify-between py-4">
-          <div className="flex">
+        <div className="flex items-center justify-between py-4 gap-4 flex-nowrap">
+          <div className="flex shrink-0">
             <Link href="/" className="-m-1.5 p-1.5">
-              <Logo width={32} height={32} />
+              <Logo width={128} height={32} />
             </Link>
           </div>
 
-          <div className="gap-x-4 flex ml-auto items-center">
+          <div className="flex-1 min-w-0 flex items-center justify-center gap-x-8 overflow-x-auto whitespace-nowrap">
             <NavLinks />
-            <div className="ml-4 pl-4 border-l border-zinc-200 dark:border-zinc-800">
+          </div>
+          <div className="flex items-center justify-end whitespace-nowrap shrink-0">
+            <div className="pl-4">
               <WalletConnector onConnectionChange={() => {}} />
             </div>
           </div>
@@ -116,7 +125,7 @@ export function Header() {
               className="-m-1.5 p-1.5"
               onClick={() => setMobileMenuOpen(false)}
             >
-              <Logo width={32} height={32} />
+              <Logo width={128} height={32} />
             </Link>
             <button
               type="button"

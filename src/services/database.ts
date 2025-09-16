@@ -159,11 +159,68 @@ export class QuoteService {
   }
 
   /**
+   * Get a quote by its public quoteId
+   */
+  static async getQuoteByQuoteId(quoteId: string) {
+    const [existing] = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.quoteId, quoteId));
+    return existing || null;
+  }
+
+  /**
+   * Update executed details for a quote once the user chooses amount and completes
+   */
+  static async updateQuoteExecution(
+    quoteId: string,
+    data: {
+      tokenAmount: string;
+      totalUsd: number;
+      discountUsd: number;
+      discountedUsd: number;
+      paymentCurrency?: string;
+      paymentAmount?: string;
+      offerId?: string;
+      transactionHash?: string;
+      blockNumber?: number;
+    },
+  ) {
+    const updateData: any = {
+      tokenAmount: data.tokenAmount,
+      totalUsd: data.totalUsd,
+      discountUsd: data.discountUsd,
+      discountedUsd: data.discountedUsd,
+      status: "executed",
+      executedAt: new Date(),
+    };
+
+    if (data.paymentCurrency) updateData.paymentCurrency = data.paymentCurrency;
+    if (data.paymentAmount !== undefined)
+      updateData.paymentAmount = data.paymentAmount;
+    if (data.offerId) updateData.offerId = data.offerId;
+    if (data.transactionHash) updateData.transactionHash = data.transactionHash;
+    if (typeof data.blockNumber === "number")
+      updateData.blockNumber = data.blockNumber;
+
+    await db.update(quotes).set(updateData).where(eq(quotes.quoteId, quoteId));
+
+    const [updated] = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.quoteId, quoteId));
+    return updated;
+  }
+
+  /**
    * Set or update the beneficiary (wallet address) on a quote and refresh its signature
    */
   static async setQuoteBeneficiary(quoteId: string, beneficiary: string) {
     // Fetch existing quote
-    const [existing] = await db.select().from(quotes).where(eq(quotes.quoteId, quoteId));
+    const [existing] = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.quoteId, quoteId));
     if (!existing) {
       throw new Error(`Quote not found: ${quoteId}`);
     }
@@ -182,7 +239,7 @@ export class QuoteService {
 
     await db
       .update(quotes)
-      .set({ beneficiary: normalized, signature: newSignature, updatedAt: new Date() as any })
+      .set({ beneficiary: normalized, signature: newSignature })
       .where(eq(quotes.quoteId, quoteId));
 
     const [updated] = await db
@@ -347,7 +404,10 @@ export class DealCompletionService {
    */
   static async incrementShareCount(quoteId: string, platform: string) {
     // TODO: Persist share counts (requires schema change). For now, just log.
-    console.log(`[DealCompletionService] Share recorded`, { quoteId, platform });
+    console.log(`[DealCompletionService] Share recorded`, {
+      quoteId,
+      platform,
+    });
     return { success: true };
   }
 

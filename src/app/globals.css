@@ -3,13 +3,33 @@
 @plugin "@tailwindcss/typography";
 
 .prose :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
-  @apply !px-0 !py-0;
+  padding: 0 !important;
 }
 
 .prose :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
-  @apply !bg-transparent;
+  background-color: transparent !important;
 }
 
 .prose :where(p:last-child) {
-  @apply !mb-0;
+  margin-bottom: 0 !important;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: #ff8c00 !important;
+}
+
+/* Solana WalletMultiButton - force orange theme */
+.wallet-adapter-button,
+.wallet-adapter-button:not([disabled]),
+.wallet-adapter-button-trigger,
+.wallet-adapter-button-trigger:not([disabled]) {
+  background-color: #ff8c00 !important;
+  color: #ffffff !important;
+  border: 1px solid #e67e00 !important;
+}
+.wallet-adapter-button:hover,
+.wallet-adapter-button:focus,
+.wallet-adapter-button-trigger:hover,
+.wallet-adapter-button-trigger:focus {
+  filter: brightness(1.1);
 }

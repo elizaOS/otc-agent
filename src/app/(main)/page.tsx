@@ -1,9 +1,9 @@
 "use client";
+import "@/app/globals.css";
 
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
-import { Footer } from "@/components/footer";
 // const InitialQuoteDisplay = dynamic(
 //   () => import("@/components/initial-quote-display").then((m) => m.InitialQuoteDisplay),
 //   { ssr: false },
@@ -15,7 +15,7 @@ const Chat = dynamic(() => import("@/components/chat"), {
   loading: () => (
     <div className="flex items-center justify-center h-screen">
       <div className="animate-pulse">
-        <div className="text-xl text-zinc-500">Loading ELIZA OTC Desk...</div>
+        <div className="text-xl text-zinc-500">Loading ElizaOS OTC Desk...</div>
       </div>
     </div>
   ),
@@ -29,18 +29,9 @@ const Chat = dynamic(() => import("@/components/chat"), {
 
 function LandingPageContent() {
   return (
-    <>
-      <main className="flex-1 h-screen flex flex-col">
-        {/* Chat + Current Quote side-by-side on larger screens */}
-          <div className="lg:col-span-2">
-            <Chat />
-          </div>
-          {/* <div className="lg:col-span-1">
-            <InitialQuoteDisplay />
-          </div> */}
-      </main>
-      <Footer />
-    </>
+    <div className="h-full flex flex-col">
+      <Chat />
+    </div>
   );
 }
 
@@ -52,7 +43,7 @@ export default function Page() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <div className="text-xl text-zinc-600 dark:text-zinc-400">
-              Loading ELIZA OTC System...
+              Loading ElizaOS OTC System...
             </div>
             <div className="text-sm text-zinc-500 dark:text-zinc-500 mt-2">
               Initializing Web3 connection...

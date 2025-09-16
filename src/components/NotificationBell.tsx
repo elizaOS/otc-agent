@@ -147,7 +147,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                             <div>
                               Savings: ${notification.dealSummary.savings}
                             </div>
-                            <div>Discount: {Number(notification.dealSummary.savings) > 0 ? 'Yes' : 'No'}</div>
+                            <div>
+                              Discount:{" "}
+                              {Number(notification.dealSummary.savings) > 0
+                                ? "Yes"
+                                : "No"}
+                            </div>
                             <div>
                               Lockup: {notification.dealSummary.lockupMonths}{" "}
                               months

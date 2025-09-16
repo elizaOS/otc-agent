@@ -1,4 +1,4 @@
-// Current quote provider -- show what the current ELIZA quote is for the user
+// Current quote provider -- show what the current ElizaOS quote is for the user
 
 import { IAgentRuntime, Memory, Provider, ProviderResult } from "@elizaos/core";
 import { formatElizaAmount } from "../services/priceFeed";
@@ -10,7 +10,7 @@ const quoteCache = new Map<
   string,
   {
     userId: string;
-    tokenAmount: string; // ELIZA amount
+    tokenAmount: string; // ElizaOS amount
     discountBps: number;
     paymentCurrency: "ETH" | "USDC";
     priceUsdPerToken: number;
@@ -46,11 +46,11 @@ export const quoteProvider: Provider = {
     if (!currentQuote) {
       let statsText = "";
       if (stats.total > 0) {
-        statsText = `\n\n📈 Your ELIZA Stats: ${stats.executed} executed, ${formatElizaAmount(stats.totalElizaPurchased)} ELIZA purchased, $${stats.totalVolumeUsd.toFixed(2)} spent, $${stats.totalSavedUsd.toFixed(2)} saved`;
+        statsText = `\n\n📈 Your ElizaOS Stats: ${stats.executed} executed, ${formatElizaAmount(stats.totalElizaPurchased)} ElizaOS purchased, $${stats.totalVolumeUsd.toFixed(2)} spent, $${stats.totalSavedUsd.toFixed(2)} saved`;
       }
 
       return {
-        text: `No active ELIZA quote. Use 'create quote' to generate a quote for ELIZA tokens.${statsText}`,
+        text: `No active ElizaOS quote. Use 'create quote' to generate a quote for ElizaOS tokens.${statsText}`,
       };
     }
 
@@ -60,7 +60,7 @@ export const quoteProvider: Provider = {
       text: `
 Current Agent Quote (ID: ${currentQuote.quoteId}):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 Amount: ${formattedAmount} ELIZA
+📊 Amount: ${Number(currentQuote.tokenAmount) > 0 ? formattedAmount + " ElizaOS" : "Choose amount at acceptance"}
 💰 Price per Token: $${currentQuote.priceUsdPerToken.toFixed(8)}
 💵 Total Value: $${currentQuote.totalUsd.toFixed(2)}
 🎯 Discount: ${currentQuote.discountBps / 100}% (${currentQuote.discountBps} bps)
@@ -69,10 +69,10 @@ Current Agent Quote (ID: ${currentQuote.quoteId}):
 
 FAQ:
 - What is the minimum order size?
-We have a minimum order size of 1000 $eliza tokens.
+We have a minimum order size of 1000 $ElizaOS tokens.
 
 - What is the maximum order size?
-We're capping it so we can have enough for everyone to try out the OTC agent, so only 100k $eliza tokens at a time for now.
+We're capping it so we can have enough for everyone to try out the OTC agent, so only 100k $ElizaOS tokens at a time for now.
 
 - What is the maximum discount?
 Try us. Negotiate if you can :) Usually we're around 2-10% off but open to negotiation.
@@ -86,7 +86,7 @@ We're offering 1 week lockups for now.
 - How do I buy the tokens?
 You'll need ETH or USDC on Base.
 
-- Wait, the new $eliza token is on Base? Isn't $ai16z a Solana project?
+- Wait, the new $ElizaOS token is on Base? Isn't $ai16z a Solana project?
 It's available on Base, Optimism, Arbitrum, Solana, Polygon and Ethereum mainnet.
 
 - When do I get my tokens?

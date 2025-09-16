@@ -12,12 +12,6 @@ export const siteConfig = {
     {
       rel: "icon",
       type: "image/png",
-      url: "/eliza-black.png",
-      media: "(prefers-color-scheme: light)",
-    },
-    {
-      rel: "icon",
-      type: "image/png",
       url: "/favicon.ico",
       media: "(prefers-color-scheme: dark)",
     },

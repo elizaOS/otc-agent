@@ -17,28 +17,39 @@ export async function GET(request: NextRequest) {
     console.log(`[API] Fetching conversations for user: ${userId}`);
 
     const conversations = await agentRuntime.getUserConversations(userId);
-    
+
     // Transform conversations to include additional metadata
     const sessions = await Promise.all(
       conversations.map(async (conv) => {
         try {
           // Get messages for this conversation to find the first message and count
-          const messages = await agentRuntime.getConversationMessages(conv.id, 50);
-          
-          const firstUserMessage = messages.find(msg => !msg.isAgent);
+          const messages = await agentRuntime.getConversationMessages(
+            conv.id,
+            50,
+          );
+
+          const firstUserMessage = messages.find((msg) => !msg.isAgent);
           const lastMessage = messages[messages.length - 1];
-          
+
           return {
             id: conv.id,
-            title: conv.title || firstUserMessage?.content?.substring(0, 50) || "New Chat",
+            title:
+              conv.title ||
+              firstUserMessage?.content?.substring(0, 50) ||
+              "New Chat",
             messageCount: messages.length,
             lastActivity: conv.lastMessageAt || conv.createdAt,
-            preview: lastMessage ? JSON.parse(lastMessage.content).text?.substring(0, 100) : "",
+            preview: lastMessage
+              ? JSON.parse(lastMessage.content).text?.substring(0, 100)
+              : "",
             isFromAgent: lastMessage?.isAgent || false,
             createdAt: conv.createdAt,
           };
         } catch (error) {
-          console.error(`[API] Error processing conversation ${conv.id}:`, error);
+          console.error(
+            `[API] Error processing conversation ${conv.id}:`,
+            error,
+          );
           return {
             id: conv.id,
             title: conv.title || "New Chat",

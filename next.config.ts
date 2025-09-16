@@ -5,33 +5,31 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  serverExternalPackages: ['handlebars', '@elizaos/plugin-sql', '@elizaos/core'],
   experimental: {
     inlineCss: true,
   },
   webpack: (config, { isServer }) => {
-    // Ensure handlebars is bundled properly
-    config.resolve = config.resolve || {};
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      handlebars: require.resolve('handlebars'),
-    };
+    // Ignore handlebars require.extensions warning
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /node_modules\/handlebars/,
+        message: /require\.extensions/,
+      },
+    ];
     
-    // For server-side, ensure proper module resolution
-    if (isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        handlebars: require.resolve('handlebars'),
-      };
-    }
-    
-    // Exclude Web3 packages from server-side bundling to prevent IndexedDB errors
+    // Exclude Web3 packages and handlebars from server-side bundling
     if (isServer) {
       config.externals = [
         ...(config.externals || []),
         '@rainbow-me/rainbowkit',
         'wagmi',
         '@tanstack/react-query',
-        'viem'
+        'viem',
+        'handlebars',
+        '@elizaos/plugin-sql',
+        '@elizaos/core'
       ];
     }
     

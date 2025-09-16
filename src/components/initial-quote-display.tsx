@@ -9,7 +9,7 @@ import { useAccount } from "wagmi";
 
 interface InitialQuoteDisplayProps {
   onAccept?: (tokenAmount: number) => Promise<void>;
-  quote?: OTCQuote | null;
+  quote?: Partial<OTCQuote> | null;
 }
 
 export function InitialQuoteDisplay({
@@ -34,9 +34,14 @@ export function InitialQuoteDisplay({
         return;
       }
       try {
-        const userId = typeof window !== "undefined" ? localStorage.getItem("otc-desk-user-id") : null;
+        const userId =
+          typeof window !== "undefined"
+            ? localStorage.getItem("otc-desk-user-id")
+            : null;
         if (!userId) return;
-        const res = await fetch(`/api/quote/latest?userId=${encodeURIComponent(userId)}`);
+        const res = await fetch(
+          `/api/quote/latest?userId=${encodeURIComponent(userId)}`,
+        );
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setQuote(data.quote ?? null);
@@ -51,12 +56,14 @@ export function InitialQuoteDisplay({
   }, [propQuote]);
 
   // Default fallback if quote is not loaded yet
-  const defaultQuote = quote || {
-    type: "long-term" as const,
-    discountBps: 800,
-    lockupMonths: 5,
-    duration: 20,
-  } as Partial<OTCQuote> & { discountBps?: number; lockupMonths?: number };
+  const defaultQuote =
+    quote ||
+    ({
+      type: "long-term" as const,
+      discountBps: 800,
+      lockupMonths: 5,
+      duration: 20,
+    } as Partial<OTCQuote> & { discountBps?: number; lockupMonths?: number });
   // Ensure values are defined for usage
   const discountPercent = (defaultQuote.discountBps ?? 800) / 100;
   const lockupMonths = defaultQuote.lockupMonths ?? 5;
@@ -83,7 +90,10 @@ export function InitialQuoteDisplay({
         await fetch(`/api/quote/latest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quoteId: quote.quoteId, beneficiary: address }),
+          body: JSON.stringify({
+            quoteId: quote.quoteId,
+            beneficiary: address,
+          }),
         });
       }
 
@@ -125,7 +135,9 @@ export function InitialQuoteDisplay({
 
         <div className="space-y-4 mb-6">
           <div className="flex justify-between items-center py-3 border-b border-zinc-200 dark:border-zinc-700">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">Discount</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              Discount
+            </span>
             <span className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
               {discountPercent}%
             </span>
@@ -145,7 +157,7 @@ export function InitialQuoteDisplay({
               Token Range
             </span>
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              100 - {formatTokenAmount(maxTokenPerOrder)} ELIZA
+              100 - {formatTokenAmount(maxTokenPerOrder)} ElizaOS
             </span>
           </div>
         </div>
@@ -169,9 +181,7 @@ export function InitialQuoteDisplay({
       <AcceptQuoteModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        discountPercent={discountPercent}
-        lockupMonths={lockupMonths}
-        onConfirm={handleAcceptQuote}
+        initialQuote={quote}
       />
     </>
   );

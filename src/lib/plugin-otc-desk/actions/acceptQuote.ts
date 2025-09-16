@@ -12,7 +12,7 @@ import {
 import { getUserQuote, deleteUserQuote } from "../providers/quote";
 import { updateQuoteStatus } from "../services/quoteHistory";
 import { notificationService } from "../services/notifications";
-import { ELIZA_TOKEN, formatElizaAmount } from "../services/priceFeed";
+import { ELIZAOS_TOKEN, formatElizaAmount } from "../services/priceFeed";
 
 // Mock function to simulate blockchain interaction
 // In production, this would use the actual OTC contract via wagmi/ethers
@@ -49,7 +49,7 @@ async function createOTCOfferOnChain(): Promise<{
 }
 
 export const acceptQuoteAction: Action = {
-  name: "ACCEPT_ELIZA_QUOTE",
+  name: "ACCEPT_ELIZAOS_QUOTE",
   similes: [
     "accept quote",
     "fulfill quote",
@@ -59,7 +59,7 @@ export const acceptQuoteAction: Action = {
     "purchase eliza",
     "proceed with quote",
   ],
-  description: "Accept and execute a previously generated ELIZA quote",
+  description: "Accept and execute a previously generated ElizaOS quote",
 
   validate: async (runtime: IAgentRuntime, message: Memory) => {
     const text = message.content?.text?.toLowerCase() || "";
@@ -98,7 +98,7 @@ export const acceptQuoteAction: Action = {
       if (!quote) {
         if (callback) {
           await callback({
-            text: "❌ No active ELIZA quote found. Please create a quote first using 'create quote'.",
+            text: "❌ No active ElizaOS quote found. Please create a quote first using 'create quote'.",
             action: "NO_QUOTE",
           });
         }
@@ -114,7 +114,7 @@ export const acceptQuoteAction: Action = {
 
         if (callback) {
           await callback({
-            text: "❌ Your ELIZA quote has expired. Please create a new quote.",
+            text: "❌ Your ElizaOS quote has expired. Please create a new quote.",
             action: "QUOTE_EXPIRED",
           });
         }
@@ -145,7 +145,7 @@ export const acceptQuoteAction: Action = {
 
         if (callback) {
           await callback({
-            text: `❌ Failed to execute ELIZA quote: ${result.error || "Transaction failed"}. Please try again.`,
+            text: `❌ Failed to execute ElizaOS quote: ${result.error || "Transaction failed"}. Please try again.`,
             action: "EXECUTION_FAILED",
           });
         }
@@ -189,32 +189,32 @@ export const acceptQuoteAction: Action = {
 
       // Enhanced XML response for frontend
       const xmlResponse = `
-<quoteAccepted>
-  <quoteId>${quote.quoteId}</quoteId>
-  <offerId>${result.offerId}</offerId>
-  <transactionHash>${result.transactionHash}</transactionHash>
-  <tokenAmount>${quote.tokenAmount}</tokenAmount>
-  <tokenAmountFormatted>${formattedAmount}</tokenAmountFormatted>
-  <tokenSymbol>${ELIZA_TOKEN.symbol}</tokenSymbol>
-  <tokenName>${ELIZA_TOKEN.name}</tokenName>
-  <paidAmount>${paymentAmount}</paidAmount>
-  <paymentCurrency>${quote.paymentCurrency}</paymentCurrency>
-  <discountBps>${quote.discountBps}</discountBps>
-  <discountPercent>${(quote.discountBps / 100).toFixed(2)}</discountPercent>
-  <totalSaved>${(quote.totalUsd - quote.discountedUsd).toFixed(2)}</totalSaved>
-  <finalPrice>${quote.discountedUsd.toFixed(2)}</finalPrice>
-  <status>executed</status>
-  <timestamp>${new Date().toISOString()}</timestamp>
-  <message>ELIZA quote executed successfully! Your otc offer has been created.</message>
-</quoteAccepted>`;
+<QuoteAccepted>
+  <QuoteId>${quote.quoteId}</QuoteId>
+  <OfferId>${result.offerId}</OfferId>
+  <TransactionHash>${result.transactionHash}</TransactionHash>
+  <TokenAmount>${quote.tokenAmount}</TokenAmount>
+  <TokenAmountFormatted>${formattedAmount}</TokenAmountFormatted>
+  <TokenSymbol>${ELIZAOS_TOKEN.symbol}</TokenSymbol>
+  <TokenName>${ELIZAOS_TOKEN.name}</TokenName>
+  <PaidAmount>${paymentAmount}</PaidAmount>
+  <PaymentCurrency>${quote.paymentCurrency}</PaymentCurrency>
+  <DiscountBps>${quote.discountBps}</DiscountBps>
+  <DiscountPercent>${(quote.discountBps / 100).toFixed(2)}</DiscountPercent>
+  <TotalSaved>${(quote.totalUsd - quote.discountedUsd).toFixed(2)}</TotalSaved>
+  <FinalPrice>${quote.discountedUsd.toFixed(2)}</FinalPrice>
+  <Status>executed</Status>
+  <Timestamp>${new Date().toISOString()}</Timestamp>
+  <Message>ElizaOS quote executed successfully! Your otc offer has been created.</Message>
+</QuoteAccepted>`;
 
       const textResponse = `
-✅ **ELIZA Quote Executed Successfully!**
+✅ **ElizaOS Quote Executed Successfully!**
 
 📋 **Order Summary:**
 • Quote ID: ${quote.quoteId}
 • Offer ID: #${result.offerId}
-• Amount: ${formattedAmount} ELIZA
+• Amount: ${formattedAmount} ElizaOS
 • Paid: ${paymentAmount} ${quote.paymentCurrency}
 • Saved: $${(quote.totalUsd - quote.discountedUsd).toFixed(2)} (${(quote.discountBps / 100).toFixed(2)}%)
 
@@ -226,15 +226,19 @@ ${result.transactionHash.substring(0, 10)}...${result.transactionHash.substring(
 
 ⏰ **Next Steps:**
 1. Wait for administrator approval
-2. Once approved, your ELIZA tokens will be locked for the vesting period
-3. After vesting, you can claim your ELIZA tokens
+2. Once approved, your ElizaOS tokens will be locked for the vesting period
+3. After vesting, you can claim your ElizaOS tokens
 
 You can check your offer status anytime by asking "show my offers" or "check offer #${result.offerId}"
       `.trim();
 
       if (callback) {
         await callback({
-          text: textResponse,
+          text:
+            textResponse +
+            "\n\n<!-- XML_START -->\n" +
+            xmlResponse +
+            "\n<!-- XML_END -->",
           action: "QUOTE_ACCEPTED",
           content: {
             xml: xmlResponse,
@@ -256,10 +260,10 @@ You can check your offer status anytime by asking "show my offers" or "check off
 
       return { success: true };
     } catch (error) {
-      console.error("Error accepting ELIZA quote:", error);
+      console.error("Error accepting ElizaOS quote:", error);
       if (callback) {
         await callback({
-          text: "❌ Failed to accept ELIZA quote. Please try again.",
+          text: "❌ Failed to accept ElizaOS quote. Please try again.",
           action: "ACCEPT_ERROR",
         });
       }

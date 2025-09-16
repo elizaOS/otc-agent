@@ -1,12 +1,10 @@
 import {
-  type Action,
   asUUID,
   ChannelType,
   composePromptFromState,
   createUniqueUuid,
   type Entity,
   type EntityPayload,
-  type Evaluator,
   EventType,
   type IAgentRuntime,
   logger,
@@ -15,20 +13,18 @@ import {
   type MessageReceivedHandlerParams,
   ModelType,
   type Plugin,
-  type Provider,
   type UUID,
   type WorldPayload,
 } from "@elizaos/core";
 import { v4 } from "uuid";
-import { recentMessagesProvider } from "./providers/recentMessages";
-import { quoteProvider } from "./providers/quote";
-import { otcDeskProvider } from "./providers/otcDesk";
+import { acceptQuoteAction } from "./actions/acceptQuote";
+import { quoteAction } from "./actions/quote";
 import { tokenProvider as ai16zProvider } from "./providers/ai16z";
+import { otcDeskProvider } from "./providers/otcDesk";
+import { quoteProvider } from "./providers/quote";
+import { recentMessagesProvider } from "./providers/recentMessages";
 import { tokenProvider as shawProvider } from "./providers/shaw";
 import { tokenProvider as elizaTokenProvider } from "./providers/token";
-import { quoteAction } from "./actions/quote";
-import { acceptQuoteAction } from "./actions/acceptQuote";
-import { quoteHistoryAction } from "./actions/quoteHistory";
 
 /**
  * Extracts the text content from within a <response> XML tag.
@@ -108,7 +104,6 @@ type MediaData = {
 };
 
 const latestResponseIds = new Map<string, Map<string, string>>();
-
 
 /**
  * Fetches media data from a list of attachments, supporting both HTTP URLs and local file paths.
@@ -631,7 +626,6 @@ const events = {
   CONTROL_MESSAGE: [controlMessageHandler],
 };
 
-
 export const otcDeskPlugin: Plugin = {
   name: "otc-desk",
   description: "OTC Desk plugin for managing quotes and transactions",
@@ -644,11 +638,7 @@ export const otcDeskPlugin: Plugin = {
     shawProvider,
     elizaTokenProvider,
   ],
-  actions: [
-    quoteAction,
-    acceptQuoteAction,
-    quoteHistoryAction,
-  ],
+  actions: [quoteAction, acceptQuoteAction],
 };
 
 export default otcDeskPlugin;

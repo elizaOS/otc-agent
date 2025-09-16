@@ -11,7 +11,7 @@ pkill -f "elizaos" 2>/dev/null && echo "   ✅ Stopped ElizaOS"
 if [ -f .pids ]; then
     source .pids
     [ ! -z "$HARDHAT_PID" ] && kill $HARDHAT_PID 2>/dev/null
-    [ ! -z "$ELIZA_PID" ] && kill $ELIZA_PID 2>/dev/null
+    [ ! -z "$ELIZAOS_PID" ] && kill $ELIZAOS_PID 2>/dev/null
     [ ! -z "$NEXT_PID" ] && kill $NEXT_PID 2>/dev/null
     rm .pids
 fi

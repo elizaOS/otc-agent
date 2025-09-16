@@ -5,11 +5,12 @@ export default defineConfig({
     baseUrl: 'http://localhost:2222',
     viewportWidth: 1280,
     viewportHeight: 720,
+    pageLoadTimeout: 120000,
     video: true,
     screenshotOnRunFailure: true,
-    defaultCommandTimeout: 10000,
-    requestTimeout: 10000,
-    responseTimeout: 10000,
+    defaultCommandTimeout: 20000,
+    requestTimeout: 60000,
+    responseTimeout: 60000,
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },

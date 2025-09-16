@@ -3,6 +3,14 @@ import type { Config } from "wagmi";
 import { hardhat, mainnet } from "wagmi/chains";
 import { createClient } from "viem";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import {
+  metaMaskWallet,
+  walletConnectWallet,
+  coinbaseWallet,
+  braveWallet,
+  rabbyWallet,
+  trustWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 
 import { APP_INFO } from "@/config/app";
 
@@ -33,4 +41,18 @@ export const config: Config = getDefaultConfig({
     [hardhat.id]: http(rpcUrl),
     [mainnet.id]: http(),
   },
+  // Provide a curated wallet list to avoid duplicates (e.g., MetaMask via injected + EIP-6963)
+  wallets: [
+    {
+      groupName: "Popular",
+      wallets: [
+        metaMaskWallet,
+        walletConnectWallet,
+        coinbaseWallet,
+        braveWallet,
+        rabbyWallet,
+        trustWallet,
+      ],
+    },
+  ],
 });

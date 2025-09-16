@@ -8,7 +8,7 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { quoteId, action, userId } = body;
+    const { quoteId, action } = body;
 
     if (!quoteId) {
       return NextResponse.json(
@@ -18,62 +18,62 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "complete") {
-      if (!userId) {
-        return NextResponse.json(
-          { error: "User ID is required for completion" },
-          { status: 400 },
-        );
-      }
+      // Accept a chosen amount and compute totals from terms
+      const tokenAmountStr = String(body.tokenAmount || "0");
+      const paymentCurrency: "ETH" | "USDC" =
+        body.paymentCurrency === "ETH" ? "ETH" : "USDC";
+      const offerId = body.offerId as string | undefined;
+      const transactionHash = body.transactionHash as string | undefined;
+      const blockNumber = body.blockNumber as number | undefined;
 
-      // Get quote details from user's history
-      const quotes = await QuoteService.getUserQuoteHistory(userId, 50);
-      const quote = quotes.find((q) => q.id === quoteId);
-
-      if (!quote) {
+      // Load quote by public id
+      const existing = await QuoteService.getQuoteByQuoteId(quoteId);
+      if (!existing) {
         return NextResponse.json({ error: "Quote not found" }, { status: 404 });
       }
 
-      // Record deal completion
-      const completion = await DealCompletionService.recordDealCompletion({
-        userId: quote.userId,
-        quoteId: quote.id,
-        transactionHash: body.transactionHash || "",
-        offerId: body.offerId,
-        blockNumber: body.blockNumber,
-        volumeUsd: quote.discountedUsd,
-        savedUsd: quote.discountUsd,
-      });
+      const pricePerToken = existing.priceUsdPerToken || 0;
+      const discountBps = existing.discountBps || 0;
+      const tokenAmountNum = parseFloat(tokenAmountStr || "0");
+      const totalUsd = tokenAmountNum * pricePerToken;
+      const discountUsd = totalUsd * (discountBps / 10000);
+      const discountedUsd = totalUsd - discountUsd;
 
-      // Update quote status
-      await QuoteService.updateQuoteStatus(quoteId, "executed", {
-        transactionHash: body.transactionHash,
-        blockNumber: body.blockNumber,
+      // Persist executed figures back to quote
+      const updated = await QuoteService.updateQuoteExecution(quoteId, {
+        tokenAmount: tokenAmountStr,
+        totalUsd,
+        discountUsd,
+        discountedUsd,
+        paymentCurrency,
+        paymentAmount:
+          paymentCurrency === "ETH" ? undefined : String(discountedUsd),
+        offerId,
+        transactionHash,
+        blockNumber,
       });
 
       // Update user session stats
       await UserSessionService.updateDealStats(
-        quote.userId,
-        quote.discountedUsd,
-        quote.discountUsd,
+        existing.userId,
+        discountedUsd,
+        discountUsd,
       );
 
-      // Log deal completion for audit trail
+      // Log for audit
       console.log("[Deal Completion] Deal completed", {
-        userId: quote.userId,
+        userId: existing.userId,
         quoteId,
-        tokenAmount: quote.tokenAmount,
-        discountBps: quote.discountBps,
-        finalPrice: quote.discountedUsd,
-        transactionHash: body.transactionHash,
+        tokenAmount: tokenAmountStr,
+        discountBps,
+        finalPrice: discountedUsd,
+        transactionHash,
         ipAddress:
           request.headers.get("x-forwarded-for") ||
           request.headers.get("x-real-ip"),
       });
 
-      return NextResponse.json({
-        success: true,
-        completion,
-      });
+      return NextResponse.json({ success: true, quote: updated });
     } else if (action === "share") {
       // Generate share data for the quote
       const shareData = await DealCompletionService.generateShareData(quoteId);

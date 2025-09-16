@@ -30,28 +30,29 @@ const ChatForm = memo(function ChatForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-col items-center justify-center"
+      className="flex flex-col items-center justify-between h-full w-full"
     >
-      <div className="relative min-h-[36px] w-full">
+      <div className="relative flex-1 w-full">
         <textarea
           autoFocus
           aria-label="Prompt"
           value={input}
           onChange={onInputChange}
+          data-testid="chat-input"
           placeholder={placeholder || "Ask a follow up..."}
           className={clsx([
-            "size-full",
-            "relative block size-full appearance-none",
+            "absolute inset-0 w-full h-full",
+            "appearance-none",
             "placeholder:text-zinc-500 dark:placeholder:text-zinc-400",
             "resize-none",
             "focus:outline-none",
             "scrollbar scrollbar-thumb-zinc-700 scrollbar-thumb-rounded-full scrollbar-w-[4px]",
             "text-base/6 sm:text-sm/6",
             "border-none outline-none focus:outline-none focus:ring-0 focus:ring-offset-0",
-            "p-0 px-4 pt-3",
-            "field-sizing-content resize-none",
+            "px-4 py-3",
             "scrollbar-thin scrollbar-thumb-rounded-md",
-            "max-h-[48vh]",
+            "overflow-y-auto",
+            "bg-transparent",
           ])}
           onKeyDown={handleKeyDown}
         />
@@ -63,6 +64,7 @@ const ChatForm = memo(function ChatForm({
           color={(input ? "blue" : "dark") as "blue" | "dark"}
           disabled={!input || isLoading}
           aria-label="Submit"
+          data-testid="send-button"
           className="size-8"
         >
           {isLoading ? (
@@ -90,11 +92,11 @@ export const TextareaWithActions = memo(function TextareaWithActions({
   placeholder?: string;
 }) {
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex flex-col w-full h-[100px]">
       <span
         data-slot="control"
         className={clsx([
-          "relative block w-full",
+          "relative block w-full h-full",
           "dark:before:hidden",
           "before:has-[[data-disabled]]:bg-zinc-950/5 before:has-[[data-disabled]]:shadow-none",
         ])}
@@ -108,7 +110,6 @@ export const TextareaWithActions = memo(function TextareaWithActions({
             "data-[invalid]:border-red-500 data-[invalid]:data-[hover]:border-red-500 data-[invalid]:dark:border-red-600 data-[invalid]:data-[hover]:dark:border-red-600",
             "disabled:border-zinc-950/20 disabled:dark:border-white/15 disabled:dark:bg-white/[2.5%] dark:data-[hover]:disabled:border-white/15",
             "ring-offset-background",
-            "focus-within:ring focus-within:ring-blue-400 dark:focus-within:ring-blue-500",
             "border border-zinc-950/10 dark:border-white/10",
             "relative",
           ])}

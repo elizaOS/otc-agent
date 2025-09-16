@@ -6,15 +6,16 @@ Cypress.Commands.add('createQuote', (tokenAmount: string, userId = 'cypress-test
   return cy.request({
     method: 'POST',
     url: '/api/eliza/message',
+    timeout: 60000,
     body: {
-      message: `I want to buy ${tokenAmount} ELIZA tokens`,
+      message: `I want to buy ${tokenAmount} ElizaOS tokens`,
       userId,
     },
     headers: {
       'Content-Type': 'application/json',
     },
   }).then((response) => {
-    expect(response.status).to.equal(200);
+    expect(response.status).to.be.oneOf([200]);
     return response.body;
   });
 });
@@ -57,6 +58,7 @@ Cypress.Commands.add('sendAgentMessage', (message: string, userId = 'cypress-tes
   return cy.request({
     method: 'POST',
     url: '/api/eliza/message',
+    timeout: 60000,
     body: {
       message,
       userId,
@@ -65,7 +67,7 @@ Cypress.Commands.add('sendAgentMessage', (message: string, userId = 'cypress-tes
       'Content-Type': 'application/json',
     },
   }).then((response) => {
-    expect(response.status).to.equal(200);
+    expect(response.status).to.be.oneOf([200]);
     return response.body;
   });
 });

@@ -13,7 +13,9 @@ function getChain() {
 
 export async function GET(_request: NextRequest) {
   try {
-    const OTC_ADDRESS = process.env.NEXT_PUBLIC_OTC_ADDRESS as Address | undefined;
+    const OTC_ADDRESS = process.env.NEXT_PUBLIC_OTC_ADDRESS as
+      | Address
+      | undefined;
     if (!OTC_ADDRESS) {
       return NextResponse.json({ offers: [] });
     }
@@ -67,5 +69,3 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
-
-

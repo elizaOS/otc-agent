@@ -14,7 +14,9 @@ import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 // It checks for matured OTC and claims them on behalf of users
 
 const OTC_ADDRESS = process.env.NEXT_PUBLIC_OTC_ADDRESS as Address;
-const APPROVER_PRIVATE_KEY = process.env.APPROVER_PRIVATE_KEY as `0x${string}` | undefined;
+const APPROVER_PRIVATE_KEY = process.env.APPROVER_PRIVATE_KEY as
+  | `0x${string}`
+  | undefined;
 const CRON_SECRET = process.env.CRON_SECRET;
 
 function getChain() {
@@ -97,7 +99,11 @@ export async function GET(request: NextRequest) {
       claimedOffers: string[];
       failedOffers: { id: string; error: string }[];
       txHash?: string;
-    } = { maturedOffers: maturedOffers.map(String), claimedOffers: [], failedOffers: [] };
+    } = {
+      maturedOffers: maturedOffers.map(String),
+      claimedOffers: [],
+      failedOffers: [],
+    };
 
     // Execute autoClaim as approver if configured and there are matured offers
     if (maturedOffers.length > 0) {
@@ -107,14 +113,19 @@ export async function GET(request: NextRequest) {
             success: false,
             error: "Missing APPROVER_PRIVATE_KEY",
             maturedOffers: result.maturedOffers,
-            message: "Found matured offers but cannot claim without approver key",
+            message:
+              "Found matured offers but cannot claim without approver key",
           },
           { status: 500 },
         );
       }
 
       const account = privateKeyToAccount(APPROVER_PRIVATE_KEY);
-      const walletClient = createWalletClient({ account, chain, transport: http() });
+      const walletClient = createWalletClient({
+        account,
+        chain,
+        transport: http(),
+      });
 
       // Chunk to avoid gas issues (e.g., 50 per tx)
       const chunkSize = 50;
@@ -137,12 +148,19 @@ export async function GET(request: NextRequest) {
           result.txHash = hash;
           result.claimedOffers.push(...chunk.map(String));
         } catch (e: any) {
-          result.failedOffers.push({ id: chunk.map(String).join(","), error: e?.message || String(e) });
+          result.failedOffers.push({
+            id: chunk.map(String).join(","),
+            error: e?.message || String(e),
+          });
         }
       }
     }
 
-    return NextResponse.json({ success: true, timestamp: new Date().toISOString(), ...result });
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      ...result,
+    });
   } catch (error) {
     console.error("[Cron API] Error checking matured deals:", error);
     return NextResponse.json(

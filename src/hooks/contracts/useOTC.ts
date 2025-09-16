@@ -10,6 +10,7 @@ import {
   useBalance,
 } from "wagmi";
 import { hardhat } from "wagmi/chains";
+import { createPublicClient, http } from "viem";
 import type { Abi, Address } from "viem";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 const erc20Abi = [
@@ -73,6 +74,7 @@ export function useOTC(): {
   maxTokenPerOrder?: bigint;
   quoteExpirySeconds?: bigint;
   defaultUnlockDelaySeconds?: bigint;
+  emergencyRefundsEnabled?: boolean;
   isLoading: boolean;
   error: unknown;
   claim: (offerId: bigint) => Promise<unknown>;
@@ -87,6 +89,11 @@ export function useOTC(): {
   cancelOffer: (offerId: bigint) => Promise<unknown>;
   fulfillOffer: (offerId: bigint, valueWei?: bigint) => Promise<unknown>;
   approveUsdc: (amount: bigint) => Promise<unknown>;
+  emergencyRefund: (offerId: bigint) => Promise<unknown>;
+  getRequiredPayment: (
+    offerId: bigint,
+    currency: "ETH" | "USDC",
+  ) => Promise<bigint | undefined>;
 } {
   const { address: account } = useAccount();
   const chainId = useChainId();
@@ -94,6 +101,17 @@ export function useOTC(): {
     () => process.env.NEXT_PUBLIC_OTC_ADDRESS as Address | undefined,
   );
   const abi = otcArtifact.abi as Abi;
+
+  // Create public client for reading contract
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
+  const publicClient = useMemo(
+    () =>
+      createPublicClient({
+        chain: hardhat,
+        transport: http(rpcUrl),
+      }),
+    [rpcUrl],
+  );
 
   useEffect(() => {
     if (!otcAddress && typeof window !== "undefined") {
@@ -320,6 +338,39 @@ export function useOTC(): {
     } as any);
   }
 
+  async function emergencyRefund(offerId: bigint) {
+    if (!otcAddress) throw new Error("No OTC address");
+    if (!account) throw new Error("No wallet connected");
+    return writeContractAsync({
+      address: otcAddress,
+      abi,
+      functionName: "emergencyRefund",
+      args: [offerId],
+    } as any);
+  }
+
+  // Helper to get exact required payment amount
+  async function getRequiredPayment(
+    offerId: bigint,
+    currency: "ETH" | "USDC",
+  ): Promise<bigint | undefined> {
+    if (!otcAddress) return undefined;
+    try {
+      const functionName =
+        currency === "ETH" ? "requiredEthWei" : "requiredUsdcAmount";
+      const result = await publicClient.readContract({
+        address: otcAddress,
+        abi,
+        functionName,
+        args: [offerId],
+      });
+      return result as bigint;
+    } catch (error) {
+      console.error("Error getting required payment:", error);
+      return undefined;
+    }
+  }
+
   const agentAddr = (agentRes.data as Address | undefined) ?? undefined;
   const isAgent =
     !!account &&
@@ -327,6 +378,15 @@ export function useOTC(): {
     (account as string).toLowerCase() === (agentAddr as string).toLowerCase();
   const isWhitelisted = Boolean(approverMappingRes.data as boolean | undefined);
   const isApprover = isAgent || isWhitelisted;
+
+  // Check if emergency refunds are enabled
+  const emergencyRefundsRes = useReadContract({
+    address: otcAddress,
+    abi,
+    functionName: "emergencyRefundsEnabled",
+    chainId: hardhat.id,
+    query: { enabled },
+  });
 
   const myOffers: (Offer & { id: bigint })[] = useMemo(() => {
     const base = myOffersRes.data ?? [];
@@ -357,6 +417,8 @@ export function useOTC(): {
     quoteExpirySeconds: (expiryRes.data as bigint | undefined) ?? undefined,
     defaultUnlockDelaySeconds:
       (unlockDelayRes.data as bigint | undefined) ?? undefined,
+    emergencyRefundsEnabled:
+      (emergencyRefundsRes.data as boolean | undefined) ?? false,
     isLoading:
       availableTokensRes.isLoading ||
       myOfferIdsRes.isLoading ||
@@ -376,5 +438,7 @@ export function useOTC(): {
     cancelOffer,
     fulfillOffer,
     approveUsdc,
+    emergencyRefund,
+    getRequiredPayment,
   } as const;
 }

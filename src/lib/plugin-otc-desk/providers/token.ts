@@ -3,11 +3,11 @@ import { Provider } from "@elizaos/core";
 export const tokenProvider: Provider = {
   name: "TOKEN",
   description:
-    "Information about the new $eliza token and migration from $ai16z",
+    "Information about the new $ElizaOS token and migration from $ai16z",
   position: 99,
   dynamic: false,
   get: async () => {
-    const text = `$eliza is a new redonimated cross-chain token which holders of $ai16z can redeem. Redemption is free and open forever.
+    const text = `$ElizaOS is a new redonimated cross-chain token which holders of $ai16z can redeem. Redemption is free and open forever.
 This is a migration of $ai16z, which is a Solana SPL2022 extension token, to the new token which is a cross-chain token supported by Chainlink CCIP. The team had to do this for several reasons:
 - $ai16z uses a closed-source daos.fun contract which enables additional token minting
 - This lack of mint authority control unfortunately means that the token could not be listed on tier 1 exchanges like Binance and Coinbase
@@ -16,9 +16,9 @@ This is a migration of $ai16z, which is a Solana SPL2022 extension token, to the
 - Due to voting not being implemented yet on daos.fun, the team could not change the name as requested by a16z
 - The project is primarily known for Eliza and the team wants to be taken seriously
 
-The new $eliza token solves all of these problems. Users will be able to redeem $ai16z for $eliza, which will be featured on a major T1 exchange and available cross-chain at launch.
+The new $ElizaOS token solves all of these problems. Users will be able to redeem $ai16z for $ElizaOS, which will be featured on a major T1 exchange and available cross-chain at launch.
 
-The $eliza token will be distributed as follows:
+The $ElizaOS token will be distributed as follows:
 
 15% Sale - To raise capital to pay for listing fees, fund the project and thicken liquidity pool
 10% Team - The team will receive 10% of the token, mostly in vested 4 year lockups

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 async function main() {
-  console.log("🚀 Starting ELIZA OTC System Deployment...\n");
+  console.log("🚀 Starting ElizaOS OTC System Deployment...\n");
   
   const [owner, agent, approver] = await ethers.getSigners();
   
@@ -13,18 +13,18 @@ async function main() {
   console.log("  Approver:", approver.address);
   console.log();
 
-  // 1. Deploy ELIZA Token
-  console.log("1️⃣ Deploying ELIZA Token...");
+  // 1. Deploy ElizaOS Token
+  console.log("1️⃣ Deploying ElizaOS Token...");
   const MockERC20 = await ethers.getContractFactory("MockERC20");
   const elizaToken = await MockERC20.deploy(
-    "ELIZA",
-    "ELIZA",
+    "ElizaOS",
+    "ElizaOS",
     18,
-    ethers.parseEther("100000000") // 100M ELIZA tokens
+    ethers.parseEther("100000000") // 100M ElizaOS tokens
   );
   await elizaToken.waitForDeployment();
   const elizaAddress = await elizaToken.getAddress();
-  console.log("✅ ELIZA Token deployed to:", elizaAddress);
+  console.log("✅ ElizaOS Token deployed to:", elizaAddress);
 
   // 2. Deploy USDC Mock
   console.log("\n2️⃣ Deploying USDC Mock...");
@@ -42,11 +42,11 @@ async function main() {
   console.log("\n3️⃣ Deploying Price Feeds...");
   const MockAggregator = await ethers.getContractFactory("MockAggregatorV3");
   
-  // ELIZA/USD price feed - $0.05 per ELIZA (realistic for a new token)
+  // ElizaOS/USD price feed - $0.05 per ElizaOS (realistic for a new token)
   const elizaUsdFeed = await MockAggregator.deploy(8, BigInt(5000000)); // $0.05 with 8 decimals
   await elizaUsdFeed.waitForDeployment();
   const elizaUsdAddress = await elizaUsdFeed.getAddress();
-  console.log("✅ ELIZA/USD Price Feed deployed to:", elizaUsdAddress);
+  console.log("✅ ElizaOS/USD Price Feed deployed to:", elizaUsdAddress);
   
   // ETH/USD price feed - $3500 per ETH
   const ethUsdFeed = await MockAggregator.deploy(8, BigInt(350000000000)); // $3500 with 8 decimals
@@ -76,21 +76,21 @@ async function main() {
   await deal.setApprover(approver.address, true);
   console.log("  ✓ Approver set:", approver.address);
   
-  // Set limits: min $5, max 1M ELIZA per order, 30 min expiry, no default lockup
+  // Set limits: min $5, max 1M ElizaOS per order, 30 min expiry, no default lockup
   await deal.setLimits(
     BigInt(500000000), // $5 with 8 decimals
-    ethers.parseEther("1000000"), // 1M ELIZA max per order
+    ethers.parseEther("1000000"), // 1M ElizaOS max per order
     30 * 60, // 30 minutes expiry
     0 // No default lockup (specified per quote)
   );
   console.log("  ✓ Limits configured");
 
-  // 6. Fund OTC Contract with ELIZA tokens
-  console.log("\n6️⃣ Funding OTC Contract with ELIZA tokens...");
-  const fundAmount = ethers.parseEther("10000000"); // 10M ELIZA
+  // 6. Fund OTC Contract with ElizaOS tokens
+  console.log("\n6️⃣ Funding OTC Contract with ElizaOS tokens...");
+  const fundAmount = ethers.parseEther("10000000"); // 10M ElizaOS
   await elizaToken.approve(otcAddress, fundAmount);
   await deal.depositTokens(fundAmount);
-  console.log("  ✓ Deposited 10M ELIZA to OTC contract");
+  console.log("  ✓ Deposited 10M ElizaOS to OTC contract");
 
   // 7. Fund test accounts
   console.log("\n7️⃣ Setting up test accounts...");
@@ -137,7 +137,7 @@ async function main() {
       minOrderUsd: "$5",
       maxOrderEliza: "1,000,000",
       quoteExpiry: "30 minutes",
-      dealFunding: "10,000,000 ELIZA"
+      dealFunding: "10,000,000 ElizaOS"
     }
   };
 
@@ -160,11 +160,11 @@ async function main() {
   }
 
   const envUpdates = {
-    NEXT_PUBLIC_ELIZA_TOKEN_ADDRESS: elizaAddress,
+    NEXT_PUBLIC_ELIZAOS_TOKEN_ADDRESS: elizaAddress,
     NEXT_PUBLIC_USDC_ADDRESS: usdcAddress,
     NEXT_PUBLIC_deal_ADDRESS: otcAddress,
     NEXT_PUBLIC_OTC_ADDRESS: otcAddress,
-    NEXT_PUBLIC_ELIZA_USD_FEED: elizaUsdAddress,
+    NEXT_PUBLIC_ELIZAOS_USD_FEED: elizaUsdAddress,
     NEXT_PUBLIC_ETH_USD_FEED: ethUsdAddress,
     // Note: Approver is a Hardhat signer, no private key available in test environment
     APPROVER_ADDRESS: approver.address,
@@ -189,10 +189,10 @@ async function main() {
   console.log("🎉 DEPLOYMENT SUCCESSFUL!");
   console.log("=".repeat(60));
   console.log("\n📊 Summary:");
-  console.log("  • ELIZA Token:", elizaAddress);
+  console.log("  • ElizaOS Token:", elizaAddress);
   console.log("  • OTC Contract:", otcAddress);
-  console.log("  • ELIZA Price: $0.05");
-  console.log("  • OTC Funding: 10M ELIZA");
+  console.log("  • ElizaOS Price: $0.05");
+  console.log("  • OTC Funding: 10M ElizaOS");
   console.log("  • Test Wallet:", testWallet.address);
   console.log("\n💡 Next Steps:");
   console.log("  1. Start the quote approval worker: npm run worker:start");

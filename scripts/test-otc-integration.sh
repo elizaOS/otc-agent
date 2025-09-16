@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ELIZA OTC System - Integration Test Script
+# ElizaOS OTC System - Integration Test Script
 # Tests that all components are properly integrated
 
 set -e
@@ -43,7 +43,7 @@ check_component() {
 }
 
 main() {
-    header "🔍 TESTING ELIZA INTEGRATION"
+    header "🔍 TESTING ElizaOS INTEGRATION"
     
     local all_good=true
     
@@ -68,7 +68,7 @@ main() {
     # Test 3: Check Smart Contracts
     log "3️⃣ Checking Smart Contracts..." "$BLUE"
     check_component "OTC Contract" "contracts/contracts/OTC.sol" || all_good=false
-    check_component "ELIZA Token Mock" "contracts/contracts/MockERC20.sol" || all_good=false
+    check_component "ElizaOS Token Mock" "contracts/contracts/MockERC20.sol" || all_good=false
     check_component "Deployment Script" "contracts/scripts/deploy-eliza-otc.ts" || all_good=false
     check_component "E2E Test Script" "contracts/scripts/test-e2e-flow.ts" || all_good=false
     
@@ -124,14 +124,14 @@ main() {
     log "6️⃣ Checking Frontend Integration..." "$BLUE"
     
     # Check if landing page imports enhanced chat
-    if grep -q "chat-enhanced" "$PROJECT_ROOT/src/app/(landing)/page.tsx" 2>/dev/null; then
+    if grep -q "chat-enhanced" "$PROJECT_ROOT/src/app/(main)/page.tsx" 2>/dev/null; then
         log "  ✅ Enhanced chat integrated in landing page" "$GREEN"
     else
         log "  ⚠️  Enhanced chat not integrated in landing page" "$YELLOW"
     fi
     
     # Check if Web3Provider is configured
-    if grep -q "Web3Provider" "$PROJECT_ROOT/src/app/(landing)/page.tsx" 2>/dev/null; then
+    if grep -q "Web3Provider" "$PROJECT_ROOT/src/app/(main)/page.tsx" 2>/dev/null; then
         log "  ✅ Web3Provider configured" "$GREEN"
     else
         log "  ❌ Web3Provider not configured" "$RED"
@@ -153,7 +153,7 @@ main() {
     if [ "$all_good" = true ]; then
         log "✅ ALL COMPONENTS PROPERLY INTEGRATED!" "$GREEN$BOLD"
         echo
-        log "The ELIZA OTC System is fully integrated and ready to use." "$GREEN"
+        log "The ElizaOS OTC System is fully integrated and ready to use." "$GREEN"
         echo
         log "📋 Test Wallet Information:" "$CYAN"
         log "  Address: 0x494b8fc7FC263D86dB6655Fe34bf9b88b69FCe8F" "$YELLOW"

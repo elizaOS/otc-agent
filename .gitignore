@@ -92,3 +92,5 @@ prisma/dev.db-journal
 
 
 data/
+
+.anchor

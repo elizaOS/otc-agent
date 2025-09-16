@@ -17,16 +17,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Get conversation details
     const conversation = await agentRuntime.getConversation(sessionId);
-    
+
     if (!conversation) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     // Get messages for this conversation
-    const messages = await agentRuntime.getConversationMessages(sessionId, limit);
+    const messages = await agentRuntime.getConversationMessages(
+      sessionId,
+      limit,
+    );
 
     // Transform messages to the expected format
-    const formattedMessages = messages.map(msg => {
+    const formattedMessages = messages.map((msg) => {
       const content = JSON.parse(msg.content);
       return {
         id: msg.id,
@@ -81,14 +84,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
 
     // Handle the message using our agent runtime
-    const result = await agentRuntime.handleMessage(
-      sessionId,
-      userId,
-      message,
-    );
+    const result = await agentRuntime.handleMessage(sessionId, userId, message);
 
     // Wait a moment for the agent response to be generated
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Get the latest messages including the agent response
     const messages = await agentRuntime.getConversationMessages(sessionId, 10);
@@ -102,7 +101,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         userId,
         createdAt: result.createdAt,
       },
-      agentResponse: latestMessages.find(m => m.isAgent) || null,
+      agentResponse: latestMessages.find((m) => m.isAgent) || null,
     });
   } catch (error) {
     console.error("[API] Error sending message:", error);

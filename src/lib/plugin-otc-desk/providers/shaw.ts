@@ -1,7 +1,7 @@
 import { Provider } from "@elizaos/core";
 
 export const tokenProvider: Provider = {
-  name: "ELIZA",
+  name: "ElizaOS",
   description: "Information about Shaw Walters, the founder of ElizaOS",
   position: 99,
   dynamic: true,

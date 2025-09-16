@@ -4,7 +4,7 @@ import { agentRuntime } from "../../../lib/agent-runtime";
 export async function GET() {
   try {
     const isReady = agentRuntime.isReady();
-    
+
     return NextResponse.json({
       status: "ok",
       agentReady: isReady,

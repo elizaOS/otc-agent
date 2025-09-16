@@ -47,8 +47,8 @@ fi
 # Start ElizaOS agent
 echo "🤖 Starting ElizaOS agent..."
 elizaos dev --port 3137 > elizaos.log 2>&1 &
-ELIZA_PID=$!
-echo "   ElizaOS PID: $ELIZA_PID"
+ELIZAOS_PID=$!
+echo "   ElizaOS PID: $ELIZAOS_PID"
 
 # Start Next.js dev server
 echo "🌐 Starting Next.js dev server..."
@@ -118,5 +118,5 @@ echo "Process IDs saved to .pids file"
 
 # Save PIDs for stop script
 echo "HARDHAT_PID=$HARDHAT_PID" > .pids
-echo "ELIZA_PID=$ELIZA_PID" >> .pids
+echo "ELIZAOS_PID=$ELIZAOS_PID" >> .pids
 echo "NEXT_PID=$NEXT_PID" >> .pids

@@ -3,9 +3,9 @@
 
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-const DEFAULT_SUPPLY = 10_000_000n * 10n ** 18n; // 10M ELIZA for OTC
+const DEFAULT_SUPPLY = 10_000_000n * 10n ** 18n; // 10M ElizaOS for OTC
 const USDC_DECIMALS = 6n;
-const ELIZA_DECIMALS = 18n;
+const ELIZAOS_DECIMALS = 18n;
 
 const OTCModule = buildModule("OTCModule", (m) => {
   const owner = m.getAccount(0);
@@ -13,7 +13,7 @@ const OTCModule = buildModule("OTCModule", (m) => {
 
   const supply = m.getParameter("elizaSupply", DEFAULT_SUPPLY);
 
-  const eliza = m.contract("MockERC20", ["ELIZA", "ELIZA", Number(ELIZA_DECIMALS), supply], { from: owner });
+  const eliza = m.contract("MockERC20", ["ElizaOS", "ElizaOS", Number(ELIZAOS_DECIMALS), supply], { from: owner });
   const usdc = m.contract("MockERC20", ["USD Coin", "USDC", Number(USDC_DECIMALS), 0n], { from: owner });
 
   const deal = m.contract(
@@ -22,7 +22,7 @@ const OTCModule = buildModule("OTCModule", (m) => {
     { from: owner }
   );
 
-  // Owner approves OTC to transfer ELIZA for deposit
+  // Owner approves OTC to transfer ElizaOS for deposit
   m.call(eliza, "approve", [deal, supply], { id: "approve_eliza_supply", from: owner });
   // Deposit supply into OTC contract
   m.call(deal, "depositTokenSupply", [supply], { id: "deposit_eliza_supply", from: owner });

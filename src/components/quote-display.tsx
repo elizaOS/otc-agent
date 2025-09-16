@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { AcceptQuoteModal } from "@/components/accept-quote-modal";
 import { Button } from "@/components/button";
-import { useOTC } from "@/hooks/contracts/useOTC";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
 import {
   extractXMLFromMessage,
   parseOTCQuoteXML,
   type OTCQuote,
 } from "@/utils/xml-parser";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { NetworkConnectButton } from "@/components/network-connect";
+import { useMultiWallet } from "@/components/multiwallet";
+// Sharing is disabled at the quote stage. Users can share after completing a deal.
 
 interface OTCQuoteDisplayProps {
   messageText: string;
@@ -22,7 +26,8 @@ export function OTCQuoteDisplay({
 }: OTCQuoteDisplayProps) {
   const [quote, setQuote] = useState<OTCQuote | null>(null);
   const { isConnected } = useAccount();
-  const { createOffer } = useOTC();
+  const { isConnected: unifiedConnected } = useMultiWallet();
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     // Parse XML from message text using utility
@@ -38,33 +43,11 @@ export function OTCQuoteDisplay({
   if (!quote) return null;
 
   const handleAccept = async () => {
-    if (!isConnected) {
-      // Will trigger wallet connection via RainbowKit
-      return;
-    }
-
-    try {
-      // Convert to contract parameters
-      const tokenAmountWei =
-        BigInt(Math.floor(parseFloat(quote.tokenAmount))) * BigInt(10 ** 18);
-      const discountBps = quote.discountBps;
-      const paymentCurrency = quote.paymentCurrency === "ETH" ? 0 : 1;
-      const lockupSeconds = BigInt(quote.lockupDays) * BigInt(24 * 60 * 60);
-
-      await createOffer({
-        tokenAmountWei,
-        discountBps,
-        paymentCurrency,
-        lockupSeconds,
-      });
-
-      if (onAccept) {
-        onAccept(quote);
-      }
-    } catch (error) {
-      throw error;
-    }
+    if (!unifiedConnected) return;
+    setShowModal(true);
   };
+
+  // No sharing at the quote stage
 
   return (
     <div
@@ -78,13 +61,6 @@ export function OTCQuoteDisplay({
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Amount:</span>
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">
-            {quote.tokenAmountFormatted} {quote.tokenSymbol}
-          </p>
-        </div>
-
         <div>
           <span className="text-zinc-500 dark:text-zinc-400">Discount:</span>
           <p
@@ -101,43 +77,33 @@ export function OTCQuoteDisplay({
             {quote.lockupMonths} months ({quote.lockupDays} days)
           </p>
         </div>
-
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Your Price:</span>
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">
-            ${quote.finalPriceUsd}
-          </p>
-        </div>
-
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Payment:</span>
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">
-            {quote.paymentAmount} {quote.paymentSymbol}
-          </p>
-        </div>
-
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">You Save:</span>
-          <p className="font-medium text-green-600 dark:text-green-400">
-            ${quote.discountUsd} ({quote.discountPercent}%)
-          </p>
-        </div>
       </div>
 
       <div className="mt-4 flex gap-2">
-        {!isConnected ? (
-          <ConnectButton />
+        {!unifiedConnected ? (
+          <div className="inline-flex gap-2">
+            <NetworkConnectButton className="!h-9">Connect</NetworkConnectButton>
+          </div>
         ) : (
-          <Button
-            data-testid="accept-quote-button"
-            onClick={handleAccept}
-            className="flex-1"
-            color="blue"
-          >
-            Accept Quote
-          </Button>
+          <>
+            <Button
+              data-testid="accept-quote-button"
+              onClick={handleAccept}
+              className="flex-1"
+              color="orange"
+            >
+              Accept Quote
+            </Button>
+            {/* Sharing intentionally disabled until after deal completion */}
+          </>
         )}
       </div>
+
+      <AcceptQuoteModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        initialQuote={quote}
+      />
     </div>
   );
 }

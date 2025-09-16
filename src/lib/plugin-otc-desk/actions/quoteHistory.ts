@@ -1,4 +1,4 @@
-// Quote history action - show user's ELIZA quote history and statistics
+// Quote history action - show user's ElizaOS quote history and statistics
 
 import {
   Action,
@@ -16,7 +16,7 @@ import {
 import { formatElizaAmount } from "../services/priceFeed";
 
 export const quoteHistoryAction: Action = {
-  name: "SHOW_ELIZA_HISTORY",
+  name: "SHOW_ELIZAOS_HISTORY",
   similes: [
     "show history",
     "quote history",
@@ -26,7 +26,7 @@ export const quoteHistoryAction: Action = {
     "eliza stats",
     "my statistics",
   ],
-  description: "Display user's ELIZA quote history and statistics",
+  description: "Display user's ElizaOS quote history and statistics",
 
   validate: async () => true,
 
@@ -51,7 +51,7 @@ export const quoteHistoryAction: Action = {
       if (history.length === 0) {
         if (callback) {
           await callback({
-            text: "📊 You haven't created any ELIZA quotes yet. Start by saying 'create quote for 100000 ELIZA at 10% discount'",
+            text: "📊 You haven't created any ElizaOS quotes yet. Start by saying 'create quote for 100000 ElizaOS at 10% discount'",
             action: "NO_HISTORY",
           });
         }
@@ -74,62 +74,62 @@ export const quoteHistoryAction: Action = {
 
           const formattedAmount = formatElizaAmount(quote.tokenAmount);
 
-          return `${index + 1}. ${statusEmoji} ${quote.quoteId} - ${formattedAmount} ELIZA @ ${(quote.discountBps / 100).toFixed(1)}% off - $${quote.discountedUsd.toFixed(2)} - ${date} ${time}`;
+          return `${index + 1}. ${statusEmoji} ${quote.quoteId} - ${formattedAmount} ElizaOS @ ${(quote.discountBps / 100).toFixed(1)}% off - $${quote.discountedUsd.toFixed(2)} - ${date} ${time}`;
         })
         .join("\n");
 
       // XML response for frontend
       const xmlResponse = `
-<quoteHistory>
-  <stats>
-    <total>${stats.total}</total>
-    <executed>${stats.executed}</executed>
-    <expired>${stats.expired}</expired>
-    <totalVolumeUsd>${stats.totalVolumeUsd.toFixed(2)}</totalVolumeUsd>
-    <totalSavedUsd>${stats.totalSavedUsd.toFixed(2)}</totalSavedUsd>
-    <totalElizaPurchased>${stats.totalElizaPurchased}</totalElizaPurchased>
-    <averageDiscountPercent>${(stats.averageDiscountBps / 100).toFixed(2)}</averageDiscountPercent>
-  </stats>
-  <quotes>
+<QuoteHistory>
+  <Stats>
+    <Total>${stats.total}</Total>
+    <Executed>${stats.executed}</Executed>
+    <Expired>${stats.expired}</Expired>
+    <TotalVolumeUsd>${stats.totalVolumeUsd.toFixed(2)}</TotalVolumeUsd>
+    <TotalSavedUsd>${stats.totalSavedUsd.toFixed(2)}</TotalSavedUsd>
+    <TotalElizaPurchased>${stats.totalElizaPurchased}</TotalElizaPurchased>
+    <AverageDiscountPercent>${(stats.averageDiscountBps / 100).toFixed(2)}</AverageDiscountPercent>
+  </Stats>
+  <Quotes>
     ${history
       .map(
         (q) => `
-    <quote>
-      <quoteId>${q.quoteId}</quoteId>
-      <tokenAmount>${q.tokenAmount}</tokenAmount>
-      <tokenAmountFormatted>${formatElizaAmount(q.tokenAmount)}</tokenAmountFormatted>
-      <discountBps>${q.discountBps}</discountBps>
-      <finalPriceUsd>${q.discountedUsd.toFixed(2)}</finalPriceUsd>
-      <status>${q.status}</status>
-      <createdAt>${new Date(q.createdAt).toISOString()}</createdAt>
-      ${q.transactionHash ? `<transactionHash>${q.transactionHash}</transactionHash>` : ""}
-      ${q.offerId ? `<offerId>${q.offerId}</offerId>` : ""}
-    </quote>`,
+    <Quote>
+      <QuoteId>${q.quoteId}</QuoteId>
+      <TokenAmount>${q.tokenAmount}</TokenAmount>
+      <TokenAmountFormatted>${formatElizaAmount(q.tokenAmount)}</TokenAmountFormatted>
+      <DiscountBps>${q.discountBps}</DiscountBps>
+      <FinalPriceUsd>${q.discountedUsd.toFixed(2)}</FinalPriceUsd>
+      <Status>${q.status}</Status>
+      <CreatedAt>${new Date(q.createdAt).toISOString()}</CreatedAt>
+      ${q.transactionHash ? `<TransactionHash>${q.transactionHash}</TransactionHash>` : ""}
+      ${q.offerId ? `<OfferId>${q.offerId}</OfferId>` : ""}
+    </Quote>`,
       )
       .join("")}
-  </quotes>
-  <message>Showing last ${history.length} ELIZA quotes</message>
-</quoteHistory>`;
+  </Quotes>
+  <Message>Showing last ${history.length} ElizaOS quotes</Message>
+</QuoteHistory>`;
 
       const textResponse = `
-📊 **Your ELIZA Quote History & Statistics**
+📊 **Your ElizaOS Quote History & Statistics**
 
 📈 **Lifetime Stats:**
 • Total Quotes: ${stats.total}
 • Executed: ${stats.executed} (${stats.total > 0 ? ((stats.executed / stats.total) * 100).toFixed(0) : 0}% success rate)
 • Expired: ${stats.expired}
-• Total ELIZA Purchased: ${formatElizaAmount(stats.totalElizaPurchased)}
+• Total ElizaOS Purchased: ${formatElizaAmount(stats.totalElizaPurchased)}
 • Total Volume: $${stats.totalVolumeUsd.toFixed(2)}
 • Total Saved: $${stats.totalSavedUsd.toFixed(2)}
 • Average Discount: ${(stats.averageDiscountBps / 100).toFixed(2)}%
 
-📜 **Recent ELIZA Quotes (Last 10):**
+📜 **Recent ElizaOS Quotes (Last 10):**
 ${historyText}
 
 Legend: 🆕 Created | ✅ Accepted | 💎 Executed | ⏰ Expired | ❌ Rejected
 
 💡 **Tips:**
-• Create a new quote: "quote me 50000 ELIZA at 15% discount"
+• Create a new quote: "quote me 50000 ElizaOS at 15% discount"
 • Check current quote: "show my quote"
 • Accept quote: "accept quote"
       `.trim();
@@ -148,7 +148,7 @@ Legend: 🆕 Created | ✅ Accepted | 💎 Executed | ⏰ Expired | ❌ Rejected
 
       return { success: true };
     } catch (error) {
-      console.error("Error fetching ELIZA quote history:", error);
+      console.error("Error fetching ElizaOS quote history:", error);
       if (callback) {
         await callback({
           text: "❌ Failed to fetch quote history. Please try again.",

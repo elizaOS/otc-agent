@@ -2,6 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -24,6 +27,8 @@ interface AggregatorV3Interface {
 /// @notice Permissionless offer creation, approver-gated approvals, price snapshot on creation using Chainlink.
 ///         No vesting; single unlock time per deal. Supports ETH or USDC payments. Tracks token and stable treasuries.
 contract OTC is Ownable, Pausable, ReentrancyGuard {
+  using SafeERC20 for IERC20;
+  using Math for uint256;
   enum PaymentCurrency { ETH, USDC }
 
   struct Offer {
@@ -56,6 +61,12 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   uint256 public maxTokenPerOrder = 10_000 * 1e18; // 10,000 tokens
   uint256 public quoteExpirySeconds = 30 minutes;
   uint256 public defaultUnlockDelaySeconds = 0; // can be set by admin
+  uint256 public maxFeedAgeSeconds = 1 hours; // max allowed staleness for price feeds
+  uint256 public maxLockupSeconds = 365 days; // max 1 year lockup
+  uint256 public maxOpenOffersToReturn = 100; // limit for getOpenOfferIds()
+
+  // Optional restriction: if true, only beneficiary/agent/approver may fulfill
+  bool public restrictFulfillToBeneficiaryOrApprover = false;
 
   // Treasury tracking
   uint256 public tokenDeposited;   // total tokens ever deposited
@@ -70,6 +81,10 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   mapping(uint256 => Offer) public offers; // id => Offer
   uint256[] public openOfferIds;
   mapping(address => uint256[]) private _beneficiaryOfferIds;
+  
+  // Emergency recovery
+  bool public emergencyRefundsEnabled = false;
+  uint256 public emergencyRefundDeadline = 90 days; // Time after creation when emergency refund is allowed
 
   // Events
   event AgentUpdated(address indexed previous, address indexed newAgent);
@@ -82,6 +97,14 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   event OfferCancelled(uint256 indexed id, address indexed by);
   event OfferPaid(uint256 indexed id, address indexed payer, uint256 amountPaid);
   event TokensClaimed(uint256 indexed id, address indexed beneficiary, uint256 amount);
+  event FeedsUpdated(address indexed tokenUsdFeed, address indexed ethUsdFeed);
+  event LimitsUpdated(uint256 minUsdAmount, uint256 maxTokenPerOrder, uint256 quoteExpirySeconds, uint256 defaultUnlockDelaySeconds);
+  event MaxFeedAgeUpdated(uint256 maxFeedAgeSeconds);
+  event RestrictFulfillUpdated(bool enabled);
+  event EmergencyRefundEnabled(bool enabled);
+  event EmergencyRefund(uint256 indexed offerId, address indexed recipient, uint256 amount, PaymentCurrency currency);
+  event StorageCleaned(uint256 offersRemoved);
+  event RefundFailed(address indexed payer, uint256 amount);
 
   modifier onlyApproverRole() {
     require(msg.sender == agent || isApprover[msg.sender], "Not approver");
@@ -102,23 +125,56 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     tokenUsdFeed = tokenUsdFeed_;
     ethUsdFeed = ethUsdFeed_;
     agent = agent_;
+    // Enforce expected 8-decimal price feeds
+    require(tokenUsdFeed.decimals() == 8, "token feed decimals");
+    require(ethUsdFeed.decimals() == 8, "eth feed decimals");
+    // Enforce token decimals assumptions
+    require(IERC20Metadata(address(token_)).decimals() == 18, "token decimals");
+    require(IERC20Metadata(address(usdc_)).decimals() == 6, "usdc decimals");
   }
 
   // Admin
-  function setAgent(address newAgent) external onlyOwner { emit AgentUpdated(agent, newAgent); agent = newAgent; }
-  function setApprover(address a, bool allowed) external onlyOwner { isApprover[a] = allowed; emit ApproverUpdated(a, allowed); }
-  function setFeeds(AggregatorV3Interface tokenUsd, AggregatorV3Interface ethUsd) external onlyOwner { tokenUsdFeed = tokenUsd; ethUsdFeed = ethUsd; }
-  function setLimits(uint256 minUsd, uint256 maxToken, uint256 expirySecs, uint256 unlockDelaySecs) external onlyOwner {
-    minUsdAmount = minUsd; maxTokenPerOrder = maxToken; quoteExpirySeconds = expirySecs; defaultUnlockDelaySeconds = unlockDelaySecs;
+  function setAgent(address newAgent) external onlyOwner { 
+    require(newAgent != address(0), "zero agent");
+    emit AgentUpdated(agent, newAgent); 
+    agent = newAgent; 
   }
+  function setApprover(address a, bool allowed) external onlyOwner { isApprover[a] = allowed; emit ApproverUpdated(a, allowed); }
+  function setFeeds(AggregatorV3Interface tokenUsd, AggregatorV3Interface ethUsd) external onlyOwner {
+    require(tokenUsd.decimals() == 8, "token feed decimals");
+    require(ethUsd.decimals() == 8, "eth feed decimals");
+    tokenUsdFeed = tokenUsd; ethUsdFeed = ethUsd;
+    emit FeedsUpdated(address(tokenUsd), address(ethUsd));
+  }
+  function setMaxFeedAge(uint256 secs) external onlyOwner { maxFeedAgeSeconds = secs; emit MaxFeedAgeUpdated(secs); }
+  function setLimits(uint256 minUsd, uint256 maxToken, uint256 expirySecs, uint256 unlockDelaySecs) external onlyOwner {
+    require(unlockDelaySecs <= maxLockupSeconds, "lockup too long");
+    minUsdAmount = minUsd; maxTokenPerOrder = maxToken; quoteExpirySeconds = expirySecs; defaultUnlockDelaySeconds = unlockDelaySecs;
+    emit LimitsUpdated(minUsdAmount, maxTokenPerOrder, quoteExpirySeconds, defaultUnlockDelaySeconds);
+  }
+  function setMaxLockup(uint256 maxSecs) external onlyOwner { 
+    maxLockupSeconds = maxSecs; 
+  }
+  function setRestrictFulfill(bool enabled) external onlyOwner { restrictFulfillToBeneficiaryOrApprover = enabled; emit RestrictFulfillUpdated(enabled); }
+  function setEmergencyRefund(bool enabled) external onlyOwner { emergencyRefundsEnabled = enabled; emit EmergencyRefundEnabled(enabled); }
+  function setEmergencyRefundDeadline(uint256 days_) external onlyOwner { emergencyRefundDeadline = days_ * 1 days; }
   function pause() external onlyOwner { _pause(); }
   function unpause() external onlyOwner { _unpause(); }
 
   // Treasury mgmt
-  function depositTokens(uint256 amount) external onlyOwner { require(token.transferFrom(msg.sender, address(this), amount), "xferFrom"); tokenDeposited += amount; }
-  function withdrawTokens(uint256 amount) external onlyOwner { require(availableTokenInventory() >= amount, "reserved"); require(token.transfer(owner(), amount), "xfer"); emit TokenWithdrawn(amount); }
-  function withdrawStable(address to, uint256 usdcAmount, uint256 ethAmount) external onlyOwner {
-    if (usdcAmount > 0) { require(usdc.transfer(to, usdcAmount), "usdc xfer"); }
+  function depositTokens(uint256 amount) external onlyOwner {
+    token.safeTransferFrom(msg.sender, address(this), amount);
+    tokenDeposited += amount;
+    emit TokenDeposited(amount);
+  }
+  function withdrawTokens(uint256 amount) external onlyOwner nonReentrant {
+    require(availableTokenInventory() >= amount, "reserved");
+    token.safeTransfer(owner(), amount);
+    emit TokenWithdrawn(amount);
+  }
+  function withdrawStable(address to, uint256 usdcAmount, uint256 ethAmount) external onlyOwner nonReentrant {
+    require(to != address(0), "zero addr");
+    if (usdcAmount > 0) { usdc.safeTransfer(to, usdcAmount); }
     if (ethAmount > 0) { (bool ok, ) = payable(to).call{ value: ethAmount }(""); require(ok, "eth xfer"); }
     emit StableWithdrawn(to, usdcAmount, ethAmount);
   }
@@ -153,11 +209,17 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     o.discountBps = discountBps;
     o.createdAt = block.timestamp;
     uint256 lockup = lockupSeconds > 0 ? lockupSeconds : defaultUnlockDelaySeconds;
+    require(lockup <= maxLockupSeconds, "lockup too long");
     o.unlockTime = block.timestamp + lockup;
     o.priceUsdPerToken = priceUsdPerToken;
     o.currency = currency;
     if (currency == PaymentCurrency.ETH) { o.ethUsdPrice = _readEthUsdPrice(); }
     _beneficiaryOfferIds[msg.sender].push(offerId);
+    // Only track recent offers to prevent unbounded growth
+    if (openOfferIds.length >= 1000) {
+      // Remove oldest offers that are expired/completed
+      _cleanupOldOffers();
+    }
     openOfferIds.push(offerId);
     emit OfferCreated(offerId, o.beneficiary, tokenAmount, discountBps, currency);
   }
@@ -166,6 +228,15 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     Offer storage o = offers[offerId];
     require(o.beneficiary != address(0), "no offer");
     require(!o.cancelled && !o.paid, "bad state");
+    require(!o.approved, "already approved"); // Prevent duplicate approvals
+    
+    // Re-validate price hasn't moved too much (optional safety check)
+    uint256 currentPrice = _readTokenUsdPrice();
+    uint256 priceDiff = currentPrice > o.priceUsdPerToken ? 
+      currentPrice - o.priceUsdPerToken : o.priceUsdPerToken - currentPrice;
+    // Allow up to 20% price movement
+    require(priceDiff <= o.priceUsdPerToken / 5, "price moved too much");
+    
     o.approved = true;
     emit OfferApproved(offerId, msg.sender);
   }
@@ -198,20 +269,34 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     require(!o.cancelled && !o.paid && !o.fulfilled, "bad state");
     require(block.timestamp <= o.createdAt + quoteExpirySeconds, "expired");
     require(availableTokenInventory() >= o.tokenAmount, "insuff token inv");
+    if (restrictFulfillToBeneficiaryOrApprover) {
+      require(msg.sender == o.beneficiary || msg.sender == agent || isApprover[msg.sender], "fulfill restricted");
+    }
 
     uint256 usd = totalUsdForOffer(offerId); // 8d
     if (o.currency == PaymentCurrency.ETH) {
       // Convert USD (8d) to ETH wei
       uint256 ethUsd = o.ethUsdPrice > 0 ? o.ethUsdPrice : _readEthUsdPrice(); // 8d
-      uint256 weiAmount = _mulDiv(usd, 1e18, ethUsd); // 18d
-      require(msg.value == weiAmount, "bad eth");
+      uint256 weiAmount = _mulDivRoundingUp(usd, 1e18, ethUsd); // 18d, round up to avoid underpay
+      require(msg.value >= weiAmount, "insufficient eth");
+      // Attempt to refund excess ETH if any, but don't fail if refund fails
+      // This prevents griefing attacks where a malicious contract could make fulfillOffer fail
+      if (msg.value > weiAmount) {
+        uint256 refundAmount = msg.value - weiAmount;
+        (bool refunded, ) = payable(msg.sender).call{ value: refundAmount }("");
+        if (!refunded) {
+          // Log failed refund but continue - prevents griefing attack
+          // The sender chose to send excess ETH and rejected the refund
+          emit RefundFailed(msg.sender, refundAmount);
+        }
+      }
       o.amountPaid = weiAmount;
       o.payer = msg.sender;
       o.paid = true;
     } else {
       // USDC 6 decimals
-      uint256 usdcAmount = _mulDiv(usd, 1e6, 1e8);
-      require(usdc.transferFrom(msg.sender, address(this), usdcAmount), "usdc xferFrom");
+      uint256 usdcAmount = _mulDivRoundingUp(usd, 1e6, 1e8);
+      usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
       o.amountPaid = usdcAmount;
       o.payer = msg.sender;
       o.paid = true;
@@ -228,34 +313,46 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     require(block.timestamp >= o.unlockTime, "locked");
     o.fulfilled = true;
     tokenReserved -= o.tokenAmount;
-    require(token.transfer(o.beneficiary, o.tokenAmount), "xfer");
+    token.safeTransfer(o.beneficiary, o.tokenAmount);
     emit TokensClaimed(offerId, o.beneficiary, o.tokenAmount);
   }
 
   function autoClaim(uint256[] calldata offerIds) external onlyApproverRole nonReentrant whenNotPaused {
+    require(offerIds.length <= 50, "batch too large"); // Prevent gas limit issues
     for (uint256 i = 0; i < offerIds.length; i++) {
-      Offer storage o = offers[offerIds[i]];
+      uint256 id = offerIds[i];
+      if (id == 0 || id >= nextOfferId) continue; // Skip invalid IDs
+      Offer storage o = offers[id];
       if (o.beneficiary == address(0) || !o.paid || o.cancelled || o.fulfilled) continue;
       if (block.timestamp < o.unlockTime) continue;
       o.fulfilled = true;
       tokenReserved -= o.tokenAmount;
-      require(token.transfer(o.beneficiary, o.tokenAmount), "xfer");
-      emit TokensClaimed(offerIds[i], o.beneficiary, o.tokenAmount);
+      token.safeTransfer(o.beneficiary, o.tokenAmount);
+      emit TokensClaimed(id, o.beneficiary, o.tokenAmount);
     }
   }
 
   function getOpenOfferIds() external view returns (uint256[] memory) {
     uint256 total = openOfferIds.length;
+    // Start from the end for more recent offers
+    uint256 startIdx = total > maxOpenOffersToReturn ? total - maxOpenOffersToReturn : 0;
     uint256 count = 0;
-    for (uint256 i = 0; i < total; i++) {
+    
+    // First pass: count valid offers
+    for (uint256 i = startIdx; i < total && count < maxOpenOffersToReturn; i++) {
       Offer storage o = offers[openOfferIds[i]];
       if (!o.cancelled && !o.paid && block.timestamp <= o.createdAt + quoteExpirySeconds) { count++; }
     }
+    
     uint256[] memory result = new uint256[](count);
     uint256 idx = 0;
-    for (uint256 j = 0; j < total; j++) {
+    
+    // Second pass: collect valid offers
+    for (uint256 j = startIdx; j < total && idx < count; j++) {
       Offer storage o2 = offers[openOfferIds[j]];
-      if (!o2.cancelled && !o2.paid && block.timestamp <= o2.createdAt + quoteExpirySeconds) { result[idx++] = openOfferIds[j]; }
+      if (!o2.cancelled && !o2.paid && block.timestamp <= o2.createdAt + quoteExpirySeconds) { 
+        result[idx++] = openOfferIds[j]; 
+      }
     }
     return result;
   }
@@ -264,19 +361,162 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
 
   // Pricing helpers
   function _readTokenUsdPrice() internal view returns (uint256) {
-    (, int256 answer,,,) = tokenUsdFeed.latestRoundData();
+    (uint80 roundId, int256 answer, , uint256 updatedAt, uint80 answeredInRound) = tokenUsdFeed.latestRoundData();
     require(answer > 0, "bad price");
+    require(answeredInRound >= roundId, "stale round");
+    require(updatedAt > 0 && block.timestamp - updatedAt <= maxFeedAgeSeconds, "stale price");
     return uint256(answer);
   }
   function _readEthUsdPrice() internal view returns (uint256) {
-    (, int256 answer,,,) = ethUsdFeed.latestRoundData();
+    (uint80 roundId, int256 answer, , uint256 updatedAt, uint80 answeredInRound) = ethUsdFeed.latestRoundData();
     require(answer > 0, "bad price");
+    require(answeredInRound >= roundId, "stale round");
+    require(updatedAt > 0 && block.timestamp - updatedAt <= maxFeedAgeSeconds, "stale price");
     return uint256(answer);
   }
 
-  function _mulDiv(uint256 a, uint256 b, uint256 d) internal pure returns (uint256) { return (a * b) / d; }
+  function _mulDiv(uint256 a, uint256 b, uint256 d) internal pure returns (uint256) {
+    return Math.mulDiv(a, b, d);
+  }
+  function _mulDivRoundingUp(uint256 a, uint256 b, uint256 d) internal pure returns (uint256) {
+    return Math.mulDiv(a, b, d, Math.Rounding.Ceil);
+  }
+
+  // View helpers for off-chain integrations
+  function requiredEthWei(uint256 offerId) external view returns (uint256) {
+    Offer storage o = offers[offerId];
+    require(o.beneficiary != address(0), "no offer");
+    require(o.currency == PaymentCurrency.ETH, "not ETH");
+    uint256 usd = totalUsdForOffer(offerId);
+    uint256 ethUsd = o.ethUsdPrice > 0 ? o.ethUsdPrice : _readEthUsdPrice();
+    return _mulDivRoundingUp(usd, 1e18, ethUsd);
+  }
+  function requiredUsdcAmount(uint256 offerId) external view returns (uint256) {
+    Offer storage o = offers[offerId];
+    require(o.beneficiary != address(0), "no offer");
+    require(o.currency == PaymentCurrency.USDC, "not USDC");
+    uint256 usd = totalUsdForOffer(offerId);
+    return _mulDivRoundingUp(usd, 1e6, 1e8);
+  }
+
+  // Emergency functions
+  function emergencyRefund(uint256 offerId) external nonReentrant {
+    require(emergencyRefundsEnabled, "emergency refunds disabled");
+    Offer storage o = offers[offerId];
+    require(o.beneficiary != address(0), "no offer");
+    require(o.paid && !o.fulfilled && !o.cancelled, "invalid state for refund");
+    require(
+      msg.sender == o.payer || 
+      msg.sender == o.beneficiary || 
+      msg.sender == owner() || 
+      msg.sender == agent || 
+      isApprover[msg.sender],
+      "not authorized for refund"
+    );
+    
+    // Check if enough time has passed for emergency refund
+    require(
+      block.timestamp >= o.createdAt + emergencyRefundDeadline ||
+      block.timestamp >= o.unlockTime + 30 days, // Or 30 days after unlock
+      "too early for emergency refund"
+    );
+    
+    // Mark as cancelled to prevent double refund
+    o.cancelled = true;
+    
+    // Release reserved tokens
+    tokenReserved -= o.tokenAmount;
+    
+    // Refund payment
+    if (o.currency == PaymentCurrency.ETH) {
+      (bool success, ) = payable(o.payer).call{value: o.amountPaid}("");
+      require(success, "ETH refund failed");
+    } else {
+      usdc.safeTransfer(o.payer, o.amountPaid);
+    }
+    
+    emit EmergencyRefund(offerId, o.payer, o.amountPaid, o.currency);
+  }
+  
+  function adminEmergencyWithdraw(uint256 offerId) external onlyOwner nonReentrant {
+    // Only for truly stuck funds after all parties have been given chance to claim
+    Offer storage o = offers[offerId];
+    require(o.beneficiary != address(0), "no offer");
+    require(o.paid && !o.fulfilled && !o.cancelled, "invalid state");
+    require(block.timestamp >= o.unlockTime + 180 days, "must wait 180 days after unlock");
+    
+    // Mark as fulfilled to prevent double withdrawal
+    o.fulfilled = true;
+    tokenReserved -= o.tokenAmount;
+    
+    // Send tokens to beneficiary (or owner if beneficiary is compromised)
+    address recipient = o.beneficiary;
+    if (recipient == address(0)) recipient = owner(); // Fallback to owner
+    
+    token.safeTransfer(recipient, o.tokenAmount);
+    emit TokensClaimed(offerId, recipient, o.tokenAmount);
+  }
+  
+  function _cleanupOldOffers() private {
+    uint256 currentTime = block.timestamp;
+    uint256 removed = 0;
+    uint256 newLength = 0;
+    
+    // Create new array without old expired/completed offers
+    for (uint256 i = 0; i < openOfferIds.length && removed < 100; i++) {
+      uint256 id = openOfferIds[i];
+      Offer storage o = offers[id];
+      
+      // Keep if still active and not expired
+      bool shouldKeep = o.beneficiary != address(0) && 
+                       !o.cancelled && 
+                       !o.paid && 
+                       currentTime <= o.createdAt + quoteExpirySeconds + 1 days;
+      
+      if (shouldKeep) {
+        if (newLength != i) {
+          openOfferIds[newLength] = id;
+        }
+        newLength++;
+      } else {
+        removed++;
+      }
+    }
+    
+    // Resize array
+    while (openOfferIds.length > newLength) {
+      openOfferIds.pop();
+    }
+    
+    if (removed > 0) {
+      emit StorageCleaned(removed);
+    }
+  }
+  
+  function cleanupExpiredOffers(uint256 maxToClean) external {
+    // Public function to allow anyone to help clean storage
+    require(maxToClean > 0 && maxToClean <= 100, "invalid max");
+    uint256 currentTime = block.timestamp;
+    uint256 cleaned = 0;
+    
+    for (uint256 i = 0; i < openOfferIds.length && cleaned < maxToClean; i++) {
+      uint256 id = openOfferIds[i];
+      Offer storage o = offers[id];
+      
+      if (o.beneficiary != address(0) && 
+          !o.paid && 
+          !o.cancelled &&
+          currentTime > o.createdAt + quoteExpirySeconds + 1 days) {
+        // Mark as cancelled to clean up
+        o.cancelled = true;
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      _cleanupOldOffers();
+    }
+  }
 
   receive() external payable {}
 }
-
-

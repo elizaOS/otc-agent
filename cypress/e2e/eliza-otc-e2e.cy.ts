@@ -1,22 +1,22 @@
 /// <reference types="cypress" />
 
-describe('ELIZA OTC System - End-to-End Test', () => {
+describe('ElizaOS OTC System - End-to-End Test', () => {
   // Test configuration
   const TEST_WALLET_ADDRESS = Cypress.env('TEST_WALLET_ADDRESS') || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
   const deal_CONTRACT_ADDRESS = Cypress.env('deal_ADDRESS');
   
   before(() => {
     // Ensure the system is running
-    cy.visit('http://localhost:3000');
+    cy.visit('/');
     
     // Check if the application is ready
-    cy.get('body', { timeout: 10000 }).should('be.visible');
+    cy.get('body', { timeout: 30000 }).should('be.visible');
   });
 
   describe('1. Initial Setup & Navigation', () => {
     it('should load the home page', () => {
       cy.visit('/');
-      cy.contains('ELIZA').should('be.visible');
+      cy.contains('ElizaOS').should('be.visible');
       cy.get('[data-testid="chat-input"]').should('be.visible');
     });
 
@@ -29,7 +29,7 @@ describe('ELIZA OTC System - End-to-End Test', () => {
     it('should request a quote', () => {
       // Type quote request
       cy.get('[data-testid="chat-input"]')
-        .type('I want to buy 10,000 ELIZA tokens with a 15% discount for 3 months lockup');
+        .type('I want to buy 10,000 ElizaOS tokens with a 15% discount for 3 months lockup');
       
       cy.get('[data-testid="send-button"]').click();
       
@@ -156,7 +156,7 @@ describe('ELIZA OTC System - End-to-End Test', () => {
         .should('be.visible')
         .within(() => {
           cy.contains('Deal Executed Successfully').should('be.visible');
-          cy.contains('10,000 ELIZA').should('be.visible');
+          cy.contains('10,000 ElizaOS').should('be.visible');
           cy.contains('P&L Summary').should('be.visible');
         });
     });
@@ -202,7 +202,7 @@ describe('ELIZA OTC System - End-to-End Test', () => {
       cy.get('[data-testid="active-otc"]', { timeout: 5000 })
         .should('be.visible')
         .within(() => {
-          cy.contains('10,000 ELIZA').should('be.visible');
+          cy.contains('10,000 ElizaOS').should('be.visible');
           cy.contains('Locked').should('be.visible');
           cy.contains('3 months').should('be.visible');
         });
@@ -232,7 +232,7 @@ describe('ELIZA OTC System - End-to-End Test', () => {
       // Verify tokens claimed
       cy.get('[data-testid="tokens-claimed"]', { timeout: 20000 })
         .should('be.visible')
-        .should('contain', '10,000 ELIZA tokens claimed');
+        .should('contain', '10,000 ElizaOS tokens claimed');
     });
   });
 

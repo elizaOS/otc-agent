@@ -62,8 +62,7 @@ export async function POST(request: NextRequest) {
       const memory: any = {
         id: uuidv4(),
         content: {
-          text:
-            "create quote for 200000 ELIZA at 10% discount payable in USDC",
+          text: "create quote for 200000 ElizaOS at 10% discount payable in USDC",
         },
         userId,
         agentId: runtime.agentId,

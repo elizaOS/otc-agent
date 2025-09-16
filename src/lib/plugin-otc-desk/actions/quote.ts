@@ -1,27 +1,27 @@
-// quote action - generate a new ELIZA quote and return an XML object to the frontend
+// quote action - generate a new ElizaOS quote and return an XML object to the frontend
 
 import {
   Action,
+  ActionResult,
+  Content,
+  HandlerCallback,
   IAgentRuntime,
   Memory,
   State,
-  HandlerCallback,
-  Content,
-  ActionResult,
 } from "@elizaos/core";
 import {
-  setUserQuote,
-  getUserQuote,
   deleteUserQuote,
+  getUserQuote,
+  setUserQuote,
 } from "../providers/quote";
+import { notificationService } from "../services/notifications";
 import {
+  ELIZAOS_TOKEN,
+  formatElizaAmount,
   getElizaPriceUsd,
   getEthPriceUsd,
-  ELIZA_TOKEN,
-  formatElizaAmount,
 } from "../services/priceFeed";
 import { addQuoteToHistory, updateQuoteStatus } from "../services/quoteHistory";
-import { notificationService } from "../services/notifications";
 
 function generateQuoteId(): string {
   return `Q${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
@@ -82,16 +82,23 @@ function parseNegotiationRequest(text: string): {
   const result: any = {};
 
   // Token amount (reuse existing regex)
-  const amountMatch = text.match(/(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:tokens?|eliza)?/i);
+  const amountMatch = text.match(
+    /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:tokens?|eliza)?/i,
+  );
   if (amountMatch) {
     result.tokenAmount = amountMatch[1].replace(/,/g, "");
   }
 
   // Discount request
-  const discountMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:%|percent|bps|basis|discount)/i);
+  const discountMatch = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:%|percent|bps|basis|discount)/i,
+  );
   if (discountMatch) {
     const value = parseFloat(discountMatch[1]);
-    if (discountMatch[0].includes("bps") || discountMatch[0].includes("basis")) {
+    if (
+      discountMatch[0].includes("bps") ||
+      discountMatch[0].includes("basis")
+    ) {
       result.requestedDiscountBps = Math.round(value);
     } else {
       result.requestedDiscountBps = Math.round(value * 100);
@@ -99,7 +106,9 @@ function parseNegotiationRequest(text: string): {
   }
 
   // Lockup period
-  const lockupMatch = text.match(/(\d+)\s*(?:month|months|mo|week|weeks|wk|day|days|d)/i);
+  const lockupMatch = text.match(
+    /(\d+)\s*(?:month|months|mo|week|weeks|wk|day|days|d)/i,
+  );
   if (lockupMatch) {
     const value = parseInt(lockupMatch[1]);
     const unit = lockupMatch[0].toLowerCase();
@@ -131,7 +140,6 @@ async function negotiateTerms(
   request: any,
   existingQuote: any,
 ): Promise<{
-  tokenAmount: string;
   lockupMonths: number;
   discountBps: number;
   paymentCurrency: "ETH" | "USDC";
@@ -152,17 +160,15 @@ async function negotiateTerms(
   if (discountBps >= 2000 && lockupMonths < 6) lockupMonths = 6;
   if (discountBps >= 2500 && lockupMonths < 9) lockupMonths = 9;
 
-  const tokenAmount = request.tokenAmount || existingQuote?.tokenAmount || "1000";
-
-  const reasoning = `I can offer a ${(
-    discountBps / 100
-  ).toFixed(2)}% discount with a ${lockupMonths}-month lockup.`;
+  const reasoning = `I can offer a ${(discountBps / 100).toFixed(
+    2,
+  )}% discount with a ${lockupMonths}-month lockup.`;
 
   return {
-    tokenAmount,
     lockupMonths,
     discountBps,
-    paymentCurrency: request.paymentCurrency || existingQuote?.paymentCurrency || "USDC",
+    paymentCurrency:
+      request.paymentCurrency || existingQuote?.paymentCurrency || "USDC",
     reasoning,
   };
 }
@@ -221,7 +227,7 @@ export const quoteAction: Action = {
 
         if (callback) {
           await callback({
-            text: "Your ELIZA quote has been cancelled.",
+            text: "Your ElizaOS quote has been cancelled.",
             action: "QUOTE_CANCELLED",
           });
         }
@@ -245,52 +251,34 @@ export const quoteAction: Action = {
       const [priceUsdPerToken] = await Promise.all([getElizaPriceUsd()]);
 
       if (isNegotiation) {
-        // Compute negotiated terms
-        const negotiated = await negotiateTerms(runtime, negotiationRequest, existingQuote);
+        // Compute negotiated terms (amount chosen at acceptance)
+        const negotiated = await negotiateTerms(
+          runtime,
+          negotiationRequest,
+          existingQuote,
+        );
 
-        // Compute values
-        const tokenAmountNum = parseFloat(negotiated.tokenAmount);
-        const totalUsd = tokenAmountNum * priceUsdPerToken;
-        const discountUsd = totalUsd * (negotiated.discountBps / 10000);
-        const discountedUsd = totalUsd - discountUsd;
+        const ethPriceUsd =
+          negotiated.paymentCurrency === "ETH" ? await getEthPriceUsd() : 0;
 
-        // Validate min order
-        if (discountedUsd < MIN_USD_AMOUNT) {
-          if (callback) {
-            await callback({
-              text: `❌ Order too small. Minimum order value is $${MIN_USD_AMOUNT} after discount. Your order would be $${discountedUsd.toFixed(2)}.`,
-              action: "QUOTE_ERROR",
-            });
-          }
-          return { success: false };
-        }
-
-        const ethPriceUsd = negotiated.paymentCurrency === "ETH" ? await getEthPriceUsd() : 0;
-
-        // Generate quote
+        // Generate terms-only quote
         const quoteId = generateQuoteId();
         const now = Date.now();
         const expiresAt = now + 5 * 60 * 1000;
         const lockupDays = Math.round(negotiated.lockupMonths * 30);
 
-        // Payment amount
-        const paymentAmount = negotiated.paymentCurrency === "ETH"
-          ? (discountedUsd / ethPriceUsd).toFixed(6)
-          : discountedUsd.toFixed(2);
-        const paymentSymbol = negotiated.paymentCurrency === "ETH" ? "ETH" : "USDC";
-
         const quote = {
-          tokenAmount: negotiated.tokenAmount,
+          tokenAmount: "0",
           discountBps: negotiated.discountBps,
           paymentCurrency: negotiated.paymentCurrency,
           priceUsdPerToken,
-          totalUsd,
-          discountedUsd,
+          totalUsd: 0,
+          discountedUsd: 0,
           expiresAt,
           createdAt: now,
           quoteId,
           lockupMonths: negotiated.lockupMonths,
-          paymentAmount,
+          paymentAmount: "0",
         };
 
         await setUserQuote(userId, quote);
@@ -298,59 +286,50 @@ export const quoteAction: Action = {
         addQuoteToHistory({
           quoteId,
           userId,
-          tokenAmount: negotiated.tokenAmount,
+          tokenAmount: "0",
           discountBps: negotiated.discountBps,
           paymentCurrency: negotiated.paymentCurrency,
           priceUsdPerToken,
-          totalUsd,
-          discountedUsd,
+          totalUsd: 0,
+          discountedUsd: 0,
           status: "created",
           createdAt: now,
           expiresAt,
         });
 
-        const formattedAmount = formatElizaAmount(negotiated.tokenAmount);
         const xmlResponse = `
 <quote>
   <quoteId>${quoteId}</quoteId>
-  <tokenAmount>${negotiated.tokenAmount}</tokenAmount>
-  <tokenAmountFormatted>${formattedAmount}</tokenAmountFormatted>
-  <tokenSymbol>${ELIZA_TOKEN.symbol}</tokenSymbol>
+  <tokenSymbol>${ELIZAOS_TOKEN.symbol}</tokenSymbol>
   <lockupMonths>${negotiated.lockupMonths}</lockupMonths>
   <lockupDays>${lockupDays}</lockupDays>
   <pricePerToken>${priceUsdPerToken.toFixed(8)}</pricePerToken>
-  <totalValueUsd>${totalUsd.toFixed(2)}</totalValueUsd>
   <discountBps>${negotiated.discountBps}</discountBps>
   <discountPercent>${(negotiated.discountBps / 100).toFixed(2)}</discountPercent>
-  <discountUsd>${discountUsd.toFixed(2)}</discountUsd>
-  <finalPriceUsd>${discountedUsd.toFixed(2)}</finalPriceUsd>
   <paymentCurrency>${negotiated.paymentCurrency}</paymentCurrency>
-  <paymentAmount>${paymentAmount}</paymentAmount>
-  <paymentSymbol>${paymentSymbol}</paymentSymbol>
   ${negotiated.paymentCurrency === "ETH" ? `<ethPrice>${ethPriceUsd.toFixed(2)}</ethPrice>` : ""}
   <createdAt>${new Date(now).toISOString()}</createdAt>
   <expiresAt>${new Date(expiresAt).toISOString()}</expiresAt>
   <status>negotiated</status>
-  <message>OTC quote updated. Valid upon submission; agent will verify against records.</message>
+  <message>Amount is selected during acceptance. Terms will be validated on-chain.</message>
 </quote>`;
 
         const textResponse = `${negotiated.reasoning}
 
-📊 **Your Quote** (ID: ${quoteId})
-• Amount: ${formattedAmount} ${ELIZA_TOKEN.symbol}
+📊 **Your Quote Terms** (ID: ${quoteId})
 • **Discount: ${(negotiated.discountBps / 100).toFixed(2)}%**
 • **Lockup: ${negotiated.lockupMonths} months** (${lockupDays} days)
-• Your Price: $${discountedUsd.toFixed(2)} (${paymentAmount} ${paymentSymbol})
-• You Save: $${discountUsd.toFixed(2)}
+• **Price: $${priceUsdPerToken.toFixed(6)} per $${ELIZAOS_TOKEN.symbol} (pre-discount)**
 
-✅ Quote is valid upon on-chain submission; the agent will confirm it matches our records.
-
-To accept: Say "accept" or "confirm"
-To negotiate: Tell me your preferred discount or lockup period`;
+✅ Choose your purchase amount when you accept and sign.`;
 
         if (callback) {
           await callback({
-            text: textResponse + "\n\n<!-- XML_START -->\n" + xmlResponse + "\n<!-- XML_END -->",
+            text:
+              textResponse +
+              "\n\n<!-- XML_START -->\n" +
+              xmlResponse +
+              "\n<!-- XML_END -->",
             action: "QUOTE_NEGOTIATED",
             content: { xml: xmlResponse, quote, type: "otc_quote" } as Content,
           });
@@ -360,9 +339,10 @@ To negotiate: Tell me your preferred discount or lockup period`;
       }
 
       // ------------- Simple discount-based quote (legacy path) -------------
-      const tokenAmount = request.tokenAmount || existingQuote?.tokenAmount || "100000";
-      const discountBps = request.discountBps ?? existingQuote?.discountBps ?? 1000; // Default 10%
-      const paymentCurrency = request.paymentCurrency || existingQuote?.paymentCurrency || "USDC";
+      const discountBps =
+        request.discountBps ?? existingQuote?.discountBps ?? 1000; // Default 10%
+      const paymentCurrency =
+        request.paymentCurrency || existingQuote?.paymentCurrency || "USDC";
 
       if (discountBps < 0 || discountBps > MAX_DISCOUNT_BPS) {
         if (callback) {
@@ -374,43 +354,25 @@ To negotiate: Tell me your preferred discount or lockup period`;
         return { success: false };
       }
 
-      const ethPriceUsd = paymentCurrency === "ETH" ? await getEthPriceUsd() : 0;
-
-      const tokenAmountNum = parseFloat(tokenAmount);
-      const totalUsd = tokenAmountNum * priceUsdPerToken;
-      const discountUsd = totalUsd * (discountBps / 10000);
-      const discountedUsd = totalUsd - discountUsd;
-
-      if (discountedUsd < MIN_USD_AMOUNT) {
-        if (callback) {
-          await callback({
-            text: `❌ Order too small. Minimum order value is $${MIN_USD_AMOUNT} after discount.`,
-            action: "QUOTE_ERROR",
-          });
-        }
-        return { success: false };
-      }
+      const ethPriceUsd =
+        paymentCurrency === "ETH" ? await getEthPriceUsd() : 0;
 
       const quoteId = generateQuoteId();
       const now = Date.now();
       const expiresAt = now + 5 * 60 * 1000;
 
-      const paymentAmount = paymentCurrency === "ETH"
-        ? (discountedUsd / ethPriceUsd).toFixed(6)
-        : discountedUsd.toFixed(2);
-
       const quote = {
-        tokenAmount,
+        tokenAmount: "0",
         discountBps,
         paymentCurrency,
         priceUsdPerToken,
-        totalUsd,
-        discountedUsd,
+        totalUsd: 0,
+        discountedUsd: 0,
         expiresAt,
         createdAt: now,
         quoteId,
         lockupMonths: 5,
-        paymentAmount,
+        paymentAmount: "0",
       };
 
       await setUserQuote(userId, quote);
@@ -418,12 +380,12 @@ To negotiate: Tell me your preferred discount or lockup period`;
       addQuoteToHistory({
         quoteId,
         userId,
-        tokenAmount,
+        tokenAmount: "0",
         discountBps,
         paymentCurrency,
         priceUsdPerToken,
-        totalUsd,
-        discountedUsd,
+        totalUsd: 0,
+        discountedUsd: 0,
         status: "created",
         createdAt: now,
         expiresAt,
@@ -431,56 +393,48 @@ To negotiate: Tell me your preferred discount or lockup period`;
 
       notificationService.notifyQuoteCreated(userId, {
         quoteId,
-        tokenAmount,
+        tokenAmount: "0",
         discountBps,
-        totalUsd,
-        discountedUsd,
+        totalUsd: 0,
+        discountedUsd: 0,
       });
-
-      const paymentSymbol = paymentCurrency === "ETH" ? "ETH" : "USDC";
-      const formattedAmount = formatElizaAmount(tokenAmount);
 
       const xmlResponse = `
 <quote>
   <quoteId>${quoteId}</quoteId>
-  <tokenAmount>${tokenAmount}</tokenAmount>
-  <tokenAmountFormatted>${formattedAmount}</tokenAmountFormatted>
-  <tokenSymbol>${ELIZA_TOKEN.symbol}</tokenSymbol>
-  <tokenName>${ELIZA_TOKEN.name}</tokenName>
+  <tokenSymbol>${ELIZAOS_TOKEN.symbol}</tokenSymbol>
+  <tokenName>${ELIZAOS_TOKEN.name}</tokenName>
   <lockupMonths>5</lockupMonths>
   <lockupDays>150</lockupDays>
   <pricePerToken>${priceUsdPerToken.toFixed(8)}</pricePerToken>
-  <totalValueUsd>${totalUsd.toFixed(2)}</totalValueUsd>
   <discountBps>${discountBps}</discountBps>
   <discountPercent>${(discountBps / 100).toFixed(2)}</discountPercent>
-  <discountUsd>${discountUsd.toFixed(2)}</discountUsd>
-  <finalPriceUsd>${discountedUsd.toFixed(2)}</finalPriceUsd>
   <paymentCurrency>${paymentCurrency}</paymentCurrency>
-  <paymentAmount>${paymentAmount}</paymentAmount>
-  <paymentSymbol>${paymentSymbol}</paymentSymbol>
   ${paymentCurrency === "ETH" ? `<ethPrice>${ethPriceUsd.toFixed(2)}</ethPrice>` : ""}
   <createdAt>${new Date(now).toISOString()}</createdAt>
   <expiresAt>${new Date(expiresAt).toISOString()}</expiresAt>
   <status>created</status>
-  <message>OTC quote generated. Valid upon submission; agent will verify against records.</message>
+  <message>OTC quote terms generated. Choose your amount at acceptance; agent will verify on-chain.</message>
 </quote>`;
 
       const textResponse = `
-Hey! I can offer you a great deal right now.
+Here are current terms I can offer right now.
 
-📊 **Order Details:**
-• Amount: ${formattedAmount} ELIZA
-• Market Price: $${priceUsdPerToken.toFixed(8)}/ELIZA
-• Total Value: $${totalUsd.toFixed(2)}
+📊 **Quote Terms:**
+• Market Price: $${priceUsdPerToken.toFixed(8)}/ElizaOS (pre-discount)
 
 💎 **Your Discount:**
 • Discount Rate: ${(discountBps / 100).toFixed(2)}% (${discountBps} bps)
-• You Save: $${discountUsd.toFixed(2)}
-• **Your Price: $${discountedUsd.toFixed(2)}**`.trim();
+
+You can choose how many tokens to buy when you accept.`.trim();
 
       if (callback) {
         await callback({
-          text: textResponse + "\n\n<!-- XML_START -->\n" + xmlResponse + "\n<!-- XML_END -->",
+          text:
+            textResponse +
+            "\n\n<!-- XML_START -->\n" +
+            xmlResponse +
+            "\n<!-- XML_END -->",
           action: "QUOTE_GENERATED",
           content: { xml: xmlResponse, quote, type: "otc_quote" } as Content,
         });
@@ -488,7 +442,7 @@ Hey! I can offer you a great deal right now.
 
       return { success: true };
     } catch (error) {
-      console.error("Error generating ELIZA quote:", error);
+      console.error("Error generating ElizaOS quote:", error);
       if (callback) {
         await callback({
           text: "❌ Failed to generate quote. Please try again.",

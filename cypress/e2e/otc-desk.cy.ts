@@ -4,9 +4,8 @@ describe('OTC Desk E2E Tests', () => {
   beforeEach(() => {
     // Visit the landing page before each test
     cy.visit('/');
-    
-    // Wait for the page to load
-    cy.contains('Agent OTC Desk', { timeout: 10000 }).should('be.visible');
+    // Wait for chat input to be visible (landing shows chat directly)
+    cy.get('[data-testid="chat-input"]', { timeout: 30000 }).should('be.visible');
   });
 
   describe('Landing Page', () => {
@@ -53,17 +52,17 @@ describe('OTC Desk E2E Tests', () => {
       cy.get('[data-testid="chat-input"]').should('be.visible');
       
       // Send a message
-      cy.get('[data-testid="chat-input"]').type('Hello, I want to buy ELIZA tokens');
+      cy.get('[data-testid="chat-input"]').type('Hello, I want to buy ElizaOS tokens');
       cy.get('[data-testid="send-button"]').click();
       
       // Wait for agent response
       cy.get('[data-testid="agent-message"]', { timeout: 15000 }).should('be.visible');
-      cy.contains(/quote|ELIZA|discount/i).should('be.visible');
+      cy.contains(/quote|ElizaOS|discount/i).should('be.visible');
     });
 
     it('should generate a quote when requested', () => {
       // Request a quote
-      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ELIZA tokens');
+      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ElizaOS tokens');
       cy.get('[data-testid="send-button"]').click();
       
       // Wait for quote to appear
@@ -71,7 +70,7 @@ describe('OTC Desk E2E Tests', () => {
       
       // Verify quote details are shown
       cy.contains('Quote #').should('be.visible');
-      cy.contains('50,000 ELIZA').should('be.visible');
+      cy.contains('50,000 ElizaOS').should('be.visible');
       cy.contains('Discount').should('be.visible');
       cy.contains('Lockup:').should('be.visible');
       cy.contains('Your Price:').should('be.visible');
@@ -79,7 +78,7 @@ describe('OTC Desk E2E Tests', () => {
     });
 
     it('should show quote expiry countdown', () => {
-      cy.get('[data-testid="chat-input"]').type('Create quote for 100000 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Create quote for 100000 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       
       cy.get('[data-testid="quote-display"]', { timeout: 15000 }).should('be.visible');
@@ -96,7 +95,7 @@ describe('OTC Desk E2E Tests', () => {
   describe('Quote Negotiation', () => {
     it('should negotiate better terms', () => {
       // Create initial quote
-      cy.get('[data-testid="chat-input"]').type('Quote for 75000 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Quote for 75000 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       cy.get('[data-testid="quote-display"]', { timeout: 15000 }).should('be.visible');
       
@@ -113,7 +112,7 @@ describe('OTC Desk E2E Tests', () => {
     });
 
     it('should handle specific negotiation requests', () => {
-      cy.get('[data-testid="chat-input"]').type('I want 100000 ELIZA at 10% discount for 3 months');
+      cy.get('[data-testid="chat-input"]').type('I want 100000 ElizaOS at 10% discount for 3 months');
       cy.get('[data-testid="send-button"]').click();
       
       cy.get('[data-testid="quote-display"]', { timeout: 15000 }).should('be.visible');
@@ -157,7 +156,7 @@ describe('OTC Desk E2E Tests', () => {
     it('should enforce rate limiting', () => {
       // Try to create many quotes quickly
       for (let i = 0; i < 5; i++) {
-        cy.get('[data-testid="chat-input"]').clear().type(`Quote for ${10000 + i * 1000} ELIZA`);
+        cy.get('[data-testid="chat-input"]').clear().type(`Quote for ${10000 + i * 1000} ElizaOS`);
         cy.get('[data-testid="send-button"]').click();
         cy.wait(500);
       }
@@ -170,7 +169,7 @@ describe('OTC Desk E2E Tests', () => {
   describe('Quote Acceptance Flow', () => {
     it('should handle quote acceptance with wallet connection', () => {
       // Create a quote
-      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       cy.get('[data-testid="quote-display"]', { timeout: 15000 }).should('be.visible');
       
@@ -222,7 +221,7 @@ describe('OTC Desk E2E Tests', () => {
   describe('Edge Cases', () => {
     it('should handle expired quotes', () => {
       // Create a quote
-      cy.get('[data-testid="chat-input"]').type('Quote for 25000 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Quote for 25000 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       cy.get('[data-testid="quote-display"]', { timeout: 15000 }).should('be.visible');
       
@@ -232,7 +231,7 @@ describe('OTC Desk E2E Tests', () => {
     });
 
     it('should handle minimum order validation', () => {
-      cy.get('[data-testid="chat-input"]').type('Quote for 10 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Quote for 10 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       
       cy.get('[data-testid="agent-message"]', { timeout: 15000 })
@@ -255,7 +254,7 @@ describe('OTC Desk E2E Tests', () => {
       // Intercept API calls and force error
       cy.intercept('POST', '/api/eliza/message', { statusCode: 500 }).as('apiError');
       
-      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ELIZA');
+      cy.get('[data-testid="chat-input"]').type('Quote for 50000 ElizaOS');
       cy.get('[data-testid="send-button"]').click();
       
       cy.wait('@apiError');
@@ -266,12 +265,12 @@ describe('OTC Desk E2E Tests', () => {
   describe('Multi-user Scenarios', () => {
     it('should handle multiple users with different quotes', () => {
       // User 1 creates a quote
-      cy.sendAgentMessage('Quote for 50000 ELIZA', 'user1').then((response) => {
+      cy.sendAgentMessage('Quote for 50000 ElizaOS', 'user1').then((response) => {
         expect(response.text).to.include('quote');
       });
       
       // User 2 creates a different quote
-      cy.sendAgentMessage('Quote for 75000 ELIZA', 'user2').then((response) => {
+      cy.sendAgentMessage('Quote for 75000 ElizaOS', 'user2').then((response) => {
         expect(response.text).to.include('quote');
       });
       
@@ -324,7 +323,7 @@ describe('Performance Tests', () => {
     
     // Generate 5 quotes rapidly
     for (let i = 0; i < 5; i++) {
-      cy.sendAgentMessage(`Quote for ${20000 + i * 5000} ELIZA`, `perf-user-${i}`);
+      cy.sendAgentMessage(`Quote for ${20000 + i * 5000} ElizaOS`, `perf-user-${i}`);
     }
     
     const endTime = Date.now();

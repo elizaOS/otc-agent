@@ -1,12 +1,25 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+import { useEffect, useMemo, useState } from "react";
 import { config } from "@/lib/wagmi-client";
 import { APP_INFO } from "@/config/app";
-import { useEffect, useState } from "react";
+import { MultiWalletProvider } from "@/components/multiwallet";
+
+// Required by wallet-adapter-react-ui styles
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +36,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  const solanaEndpoint =
+    process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.devnet.solana.com";
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    [],
+  );
+
+  const elizaOrange = "#ff8c00";
+
   return (
     <ThemeProvider
       attribute="class"
@@ -38,7 +60,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 appName: APP_INFO.NAME,
               }}
             >
-              {children}
+              <ConnectionProvider endpoint={solanaEndpoint}>
+                <WalletProvider wallets={wallets} autoConnect>
+                  <WalletModalProvider>
+                    <MultiWalletProvider>{children}</MultiWalletProvider>
+                  </WalletModalProvider>
+                </WalletProvider>
+              </ConnectionProvider>
             </RainbowKitProvider>
           </QueryClientProvider>
         </WagmiProvider>

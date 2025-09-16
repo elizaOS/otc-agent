@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
         method: "POST",
         body: JSON.stringify({
           userId: "test-user-123",
-          text: "Give me a quote for ELIZA tokens",
+          text: "Give me a quote for ElizaOS tokens",
         }),
       },
     );
