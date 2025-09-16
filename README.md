@@ -14,14 +14,9 @@ Production-ready starter that demonstrates an Eliza agent negotiating OTC token 
 - `src/lib/agent.ts`: Eliza character, style, and negotiation examples (uses REPLY and CREATE_OTC_QUOTE)
 - `src/lib/plugin-otc-desk`: Provider graph, quote logic, actions, and helpers
 - `src/app/api/*`: HTTP endpoints for quotes, notifications, health checks, workers, etc.
-- `contracts`: Hardhat project with local OTC contracts and deploy scripts
+- `contracts`: Hardhat EVM project with local OTC contracts and deploy scripts
+- `solana`: Solana anchor project for Solana support
 - `drizzle/*`: Schema and migrations (Drizzle ORM)
-
-## Goals
-- Showcase an opinionated, production-grade pattern for agent-driven negotiation
-- Keep user experience fast, resilient, and clear (short responses, focused on deals)
-- Demonstrate safe handling of trolling/prompt injection while steering back to the deal
-- Provide a complete local workflow: chat → quote → accept → background processing
 
 ## Prerequisites
 - Node.js 18+ or Bun (recommended for scripts: `bun run <script>`)
