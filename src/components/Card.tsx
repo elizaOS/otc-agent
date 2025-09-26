@@ -19,7 +19,7 @@ export default function Card({
   return (
     <div className="backdrop-blur-md bg-white/5 p-4 sm:p-5 lg:p-6 rounded-lg border border-[#FFB79B] h-auto min-h-[200px] sm:min-h-[240px] lg:h-[270px] w-full sm:w-[480px] lg:w-[550px] flex flex-col">
       <div className="flex items-start gap-4">
-        <div className="text-orange-500 text-2xl font-bold">{number}</div>
+        <div className="text-orange-500 text-3xl font-bold">{number}</div>
         <div className="items-center">
           <h3 className="text-white text-[27px] -mt-1 font-bold">{title}</h3>
           <p className="text-gray-400 max-w-md text-[15px] mt-1">
@@ -28,7 +28,7 @@ export default function Card({
         </div>
       </div>
       {note ? (
-        <div className="mx-6 mt-2 flex flex-row space-x-2">
+        <div className="mx-7 mt-2 flex flex-row space-x-2">
           <Image
             src="/info-line.svg"
             height={24}

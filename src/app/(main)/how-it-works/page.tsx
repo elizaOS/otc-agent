@@ -31,7 +31,7 @@ export default function Page() {
           className="absolute inset-0 bg-gradient-to-r from-black via-black to-transparent"
           style={{
             background:
-              "linear-gradient(to right, #000000 0%, #000000 55%, rgba(0,0,0,0.3) 75%)",
+              "linear-gradient(to right, rgba(16, 16, 16, 1) 0%, #000000 55%, rgba(0,0,0,0.3) 75%)",
           }}
         />
       </div>
