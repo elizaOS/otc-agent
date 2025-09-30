@@ -7,8 +7,8 @@ export default function QuotePopUp() {
       <h1 className="tex-white font-bold text-[20px] lg:text-[24px]">
         Your Quote
       </h1>
-      <div className="flex justify-between flex-row items-center w-full mt-8">
-        <h1 className="font-medium text-[14px]">Pay with</h1>
+      <div className="flex justify-between flex-row items-center w-full mt-4">
+        <h1 className="font-medium text-[18px]">Pay with</h1>
 
         <TokenSelecter />
       </div>
