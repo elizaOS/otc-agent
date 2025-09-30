@@ -4,6 +4,7 @@ import { WalletConnector } from "@/components/wallet-connector";
 import { useMultiWallet } from "@/components/multiwallet";
 import Image from "next/image";
 import Card from "@/components/Card";
+import QuotePopUp from "@/components/quote-pop-up";
 
 export default function Page() {
   const { isConnected, networkLabel } = useMultiWallet();
@@ -58,7 +59,7 @@ export default function Page() {
             Simple, transparent, on-chain.
           </span>
         </h1>
-        <div className="flex gap-4 mt-8 place-self-center lg:place-self-start flex-col lg:flex-row">
+        <div className="flex mb-12 gap-4 mt-8 place-self-center lg:place-self-start flex-col lg:flex-row">
           <Card
             number="1"
             title="Connect your wallet"
@@ -79,6 +80,7 @@ export default function Page() {
             note={true}
           />
         </div>
+      <QuotePopUp />
       </div>
       <div
         className="absolute bottom-0 right-0 w-full h-2/3 z-20 pointer-events-none"
