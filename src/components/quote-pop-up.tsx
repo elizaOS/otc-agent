@@ -1,10 +1,19 @@
 import Image from "next/image";
 import { useState } from "react";
 import AmountSlider from "./amount-slider";
+import TokenSelecter from "./token-selector";
+import { Button } from "./button";
 
 export default function QuotePopUp() {
+  const info = [
+    { label: "Your Discount", value: "15%" },
+    { label: "Maturity", value: "6 months" },
+    { label: "Maturity date", value: "09/24/25" },
+    { label: "Est. $ELIZA", value: "$10,107" },
+  ];
+
   return (
-    <div className="p-8 h-full w-full max-w-[680px] max-h-[440px] bg-[#171717] rounded-2xl">
+    <div className="p-8 h-full w-full max-w-[680px] max-h-[500px] bg-[#171717] rounded-2xl">
       <h1 className="tex-white font-bold text-[20px] lg:text-[24px]">
         Your Quote
       </h1>
@@ -15,59 +24,21 @@ export default function QuotePopUp() {
       <div className="mt-6">
         <AmountSlider />
       </div>
-    </div>
-  );
-}
-
-function TokenSelecter() {
-  const [selectedToken, setSelectedToken] = useState("ETH");
-
-  return (
-    <div className="w-full max-w-[380px] flex flex-row">
-      <div
-        className={`w-1/2 py-2 flex items-center rounded-l-xl border-2 transition-all duration-200 ${
-          selectedToken === "ETH"
-            ? "bg-[#F75B1E1A] border-[#F75B1E]"
-            : "bg-white/10 border-transparent"
-        }`}
-      >
-        <button
-          onClick={() => setSelectedToken("ETH")}
-          className="mx-2 flex flex-row space-x-2 w-full"
-        >
-          <Image
-            src="/tokens/ethereum.svg"
-            alt="ethereum-icon"
-            height={40}
-            width={40}
-          />
-          <div className="flex flex-col -space-y-0.5 text-start">
-            <h1 className="text-white font-bold text-[16px]">ETH</h1>
-            <p className="text-[11px] text-white/80 flex">balance: $2,300.46</p>
+      <div className="mt-8 border-t border-[#353535] border-dashed"></div>
+      <div className="mt-4 flex text-start flex-row justify-between w-full">
+        {info.map((item, index) => (
+          <div key={index} className="flex flex-col space-y-1">
+            <p className="text-[12px] text-white/60">{item.label}</p>
+            <h1 className="text-[24px] text-white">{item.value}</h1>
           </div>
-        </button>
+        ))}
       </div>
-      <div
-        className={`w-1/2 py-2 flex items-center rounded-r-xl border-2 transition-all duration-200 ${
-          selectedToken === "USDC"
-            ? "bg-[#F75B1E1A] border-[#F75B1E]"
-            : "bg-white/10 border-transparent"
-        }`}
-      >
-        <button
-          onClick={() => setSelectedToken("USDC")}
-          className="mx-2 flex flex-row space-x-2 w-full"
-        >
-          <Image
-            src="/tokens/usdc.svg"
-            alt="usdc-icon"
-            height={40}
-            width={40}
-          />
-          <div className="flex flex-col -space-y-0.5 text-start">
-            <h1 className="text-white font-bold text-[16px]">USDC</h1>
-            <p className="text-[11px] text-white/80 flex">balance: $2,300.46</p>
-          </div>
+      <div className="flex flex-row justify-end space-x-3 mt-6">
+        <button className="rounded-lg py-1 px-2 border-white/20 border-[1px] text-[12px] bg-[#1C1C1D]/20">
+          Cancel
+        </button>
+        <button className="rounded-lg py-1 px-2 text-[12px] bg-[#FF5800] font-bold">
+          Buy Now
         </button>
       </div>
     </div>
