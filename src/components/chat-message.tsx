@@ -76,7 +76,6 @@ export const ChatMessage = memo(function ChatMessage({
       paymentSymbol: { component: () => null },
       ethPrice: { component: () => null },
       createdAt: { component: () => null },
-      expiresAt: { component: () => null },
       status: { component: () => null },
       message: { component: () => null },
       reference: {
@@ -205,11 +204,11 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
 
           {/* Display quote if present in message */}
-          {!isUser && messageText?.includes("<quote>") && (
+          {/* {!isUser && messageText?.includes("<quote>") && (
             <div className="mt-3 -mx-1">
               <OTCQuoteDisplay messageText={messageText} />
             </div>
-          )}
+          )} */}
 
           {/* Citations */}
           {!isUser && uniqueCitations && uniqueCitations.length > 0 && (

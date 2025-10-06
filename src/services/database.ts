@@ -24,12 +24,10 @@ export class QuoteDB {
     apr: number;
     lockupMonths: number;
     paymentCurrency: PaymentCurrency;
-    priceUsdPerToken: number;
     totalUsd: number;
     discountUsd: number;
     discountedUsd: number;
     paymentAmount: string;
-    expiresAt: Date;
   }): Promise<Quote> {
     const runtime = await agentRuntime.getRuntime();
     const service = runtime.getService<QuoteService>("QuoteService");

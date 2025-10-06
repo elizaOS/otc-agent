@@ -2,9 +2,9 @@
 // Single source of truth registered with runtime.getService("QuoteService")
 
 import type { IAgentRuntime } from "@elizaos/core";
-import { ServiceType, Service } from "@elizaos/core";
-import { v4 as uuidv4 } from "uuid";
+import { Service, ServiceType } from "@elizaos/core";
 import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
 import { walletToEntityId } from "../../entityId";
 
 export type QuoteStatus = "active" | "expired" | "executed" | "rejected" | "approved";
@@ -21,7 +21,7 @@ export interface QuoteMemory {
   lockupMonths: number;
   lockupDays: number;
   paymentCurrency: PaymentCurrency;
-  priceUsdPerToken: number;
+  // Price is determined by Chainlink oracle on-chain, not stored in quote
   totalUsd: number;
   discountUsd: number;
   discountedUsd: number;
@@ -29,7 +29,6 @@ export interface QuoteMemory {
   status: QuoteStatus;
   signature: string;
   createdAt: number;
-  expiresAt: number;
   executedAt: number;
   rejectedAt: number;
   approvedAt: number;
@@ -45,7 +44,12 @@ const ENTITY_QUOTES_KEY = (entityId: string) => `entity_quotes:${entityId}`;
 const ALL_QUOTES_KEY = "all_quotes";
 
 export class QuoteService extends Service {
-  static serviceType = "QuoteService";
+  static serviceType = "QuoteService" as any;
+  static serviceName = "QuoteService";
+
+  get serviceType(): string {
+    return "QuoteService";
+  }
 
   capabilityDescription = "QuoteService";
 
@@ -56,6 +60,8 @@ export class QuoteService extends Service {
 
   async initialize(): Promise<void> {
     console.log("[QuoteService] Initialized - single source of truth for quotes");
+    console.log("[QuoteService] Service type:", this.serviceType);
+    console.log("[QuoteService] Service name:", QuoteService.serviceName);
   }
 
   async stop(): Promise<void> {
@@ -116,12 +122,10 @@ export class QuoteService extends Service {
     apr: number;
     lockupMonths: number;
     paymentCurrency: PaymentCurrency;
-    priceUsdPerToken: number;
     totalUsd: number;
     discountUsd: number;
     discountedUsd: number;
     paymentAmount: string;
-    expiresAt: Date;
   }): Promise<QuoteMemory> {
     const quoteId = this.generateQuoteId(data.entityId);
     const lockupDays = data.lockupMonths * 30;
@@ -151,7 +155,6 @@ export class QuoteService extends Service {
       lockupMonths: data.lockupMonths,
       lockupDays,
       paymentCurrency: data.paymentCurrency,
-      priceUsdPerToken: data.priceUsdPerToken,
       totalUsd: data.totalUsd,
       discountUsd: data.discountUsd,
       discountedUsd: data.discountedUsd,
@@ -159,7 +162,6 @@ export class QuoteService extends Service {
       signature,
       status: "active",
       createdAt: existing?.createdAt || now, // Keep original creation time if updating
-      expiresAt: data.expiresAt.getTime(),
       executedAt: 0,
       rejectedAt: 0,
       approvedAt: 0,
@@ -178,13 +180,12 @@ export class QuoteService extends Service {
   }
 
   async getActiveQuotes(): Promise<QuoteMemory[]> {
-    const now = Date.now();
     const allQuoteIds = (await this.runtime.getCache<string[]>(ALL_QUOTES_KEY)) ?? [];
 
     const quotes: QuoteMemory[] = [];
     for (const quoteId of allQuoteIds) {
       const quote = await this.runtime.getCache<QuoteMemory>(QUOTE_KEY(quoteId));
-      if (!quote || quote.status !== "active" || quote.expiresAt < now) continue;
+      if (!quote || quote.status !== "active") continue;
       quotes.push(quote);
     }
 
@@ -192,13 +193,12 @@ export class QuoteService extends Service {
   }
 
   async getQuoteByBeneficiary(beneficiary: string): Promise<QuoteMemory> {
-    const now = Date.now();
     const normalized = beneficiary.toLowerCase();
     const allQuoteIds = (await this.runtime.getCache<string[]>(ALL_QUOTES_KEY)) ?? [];
 
     for (const quoteId of allQuoteIds) {
       const quote = await this.runtime.getCache<QuoteMemory>(QUOTE_KEY(quoteId));
-      if (!quote || quote.beneficiary !== normalized || quote.status !== "active" || quote.expiresAt < now) continue;
+      if (!quote || quote.beneficiary !== normalized || quote.status !== "active") continue;
       return quote;
     }
 
@@ -325,11 +325,12 @@ export class QuoteService extends Service {
     return quote.signature === expectedSignature;
   }
 
-  // Helper: Get latest quote by wallet address (any status)
+  // Helper: Get latest active quote by wallet address
   async getQuoteByWallet(walletAddress: string): Promise<QuoteMemory | undefined> {
     const entityId = walletToEntityId(walletAddress);
     const quotes = await this.getUserQuoteHistory(entityId, 100);
-    return quotes.find((q) => q.entityId === entityId);
+    // Return the most recent ACTIVE quote only
+    return quotes.find((q) => q.entityId === entityId && q.status === "active");
   }
 
   // Helper: Expire all active quotes for a user (called before creating new one)

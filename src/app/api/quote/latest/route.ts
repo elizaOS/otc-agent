@@ -25,8 +25,6 @@ export async function GET(request: NextRequest) {
   
   if (!quote) {
     console.log('[Quote API] Creating default quote');
-    const { getElizaPriceUsd } = await import("@/lib/plugin-otc-desk/services/priceFeed");
-    const priceUsdPerToken = await getElizaPriceUsd();
     const entityId = walletToEntityId(wallet);
     
     await quoteService.createQuote({
@@ -37,12 +35,10 @@ export async function GET(request: NextRequest) {
       apr: 0,
       lockupMonths: 5,
       paymentCurrency: "USDC",
-      priceUsdPerToken,
       totalUsd: 0,
       discountUsd: 0,
       discountedUsd: 0,
       paymentAmount: "0",
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
     
     quote = await quoteService.getQuoteByWallet(wallet);
@@ -65,7 +61,6 @@ export async function GET(request: NextRequest) {
     paymentAmount: quote.paymentAmount,
     status: quote.status,
     createdAt: quote.createdAt,
-    expiresAt: quote.expiresAt,
   } : null;
 
   console.log('[Quote API] Returning:', formattedQuote?.quoteId ?? 'null');
@@ -73,21 +68,54 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const runtime = await agentRuntime.getRuntime();
-  const quoteService = runtime.getService<QuoteService>("QuoteService");
+    const runtime = await agentRuntime.getRuntime();
+    const quoteService = runtime.getService<QuoteService>("QuoteService");
 
-  if (!quoteService) {
-    return NextResponse.json({ error: "QuoteService not available" }, { status: 500 });
-  }
+    if (!quoteService) {
+      return NextResponse.json({ error: "QuoteService not available" }, { status: 500 });
+    }
 
-  const body = await request.json();
-  const { quoteId, beneficiary } = body;
+    const body = await request.json();
+    const { quoteId, beneficiary, tokenAmount, paymentCurrency, totalUsd, discountUsd, discountedUsd, paymentAmount } = body;
 
-  if (!quoteId || !beneficiary) {
-    return NextResponse.json({ error: "quoteId and beneficiary required" }, { status: 400 });
-  }
+    if (!quoteId) {
+      return NextResponse.json({ error: "quoteId required" }, { status: 400 });
+    }
 
-  const updated = await quoteService.setQuoteBeneficiary(quoteId, beneficiary);
+    console.log('[Quote API] POST - updating quote:', {
+      quoteId,
+      beneficiary: beneficiary?.slice(0, 10),
+      tokenAmount,
+      paymentCurrency,
+      totalUsd,
+      discountedUsd,
+    });
 
-  return NextResponse.json({ success: true, quote: updated });
+    // Get existing quote
+    const quote = await quoteService.getQuoteByQuoteId(quoteId);
+    
+    if (!quote) {
+      console.error('[Quote API] Quote not found:', quoteId);
+      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    }
+    
+    // Update all provided fields
+    const updatedQuote = {
+      ...quote,
+      ...(beneficiary && { beneficiary: beneficiary.toLowerCase() }),
+      ...(tokenAmount && { tokenAmount: String(tokenAmount) }),
+      ...(paymentCurrency && { paymentCurrency }),
+      ...(typeof totalUsd === 'number' && { totalUsd }),
+      ...(typeof discountUsd === 'number' && { discountUsd }),
+      ...(typeof discountedUsd === 'number' && { discountedUsd }),
+      ...(paymentAmount && { paymentAmount: String(paymentAmount) }),
+    };
+
+    // Save updated quote
+    await runtime.setCache(`quote:${quoteId}`, updatedQuote);
+    
+    console.log('[Quote API] ✅ Quote updated:', quoteId);
+
+    return NextResponse.json({ success: true, quote: updatedQuote });
+
 }

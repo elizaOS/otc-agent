@@ -66,16 +66,12 @@ class AgentRuntimeManager {
   // Helper method to get or create the runtime instance
   async getRuntime(): Promise<AgentRuntime> {
     if (!this.runtime) {
-      // Reuse a cached singleton runtime across warm invocations
-      if ((globalThis as any).__elizaRuntime) {
-        this.runtime = (globalThis as any).__elizaRuntime as AgentRuntime;
-        // Ensure agent exists even when using cached runtime
-        await this.runtime.ensureAgentExists({
-          id: this.runtime.agentId,
-          name: (agent as any)?.character?.name || "OTC Desk Agent",
-        } as any);
-        return this.runtime;
-      }
+      // Force fresh initialization - don't use cached runtime
+      // This ensures services are properly registered
+      console.log("[AgentRuntime] Creating fresh runtime instance");
+      
+      // Clear any cached runtime
+      (globalThis as any).__elizaRuntime = null;
 
       // Initialize runtime with database configuration for SQL plugin
       const DEFAULT_POSTGRES_URL = `postgres://eliza:password@localhost:${process.env.POSTGRES_DEV_PORT || 5439}/eliza`;
@@ -89,7 +85,7 @@ class AgentRuntimeManager {
           SMALL_GROQ_MODEL:
             process.env.SMALL_GROQ_MODEL || "llama-3.1-8b-instant",
           LARGE_GROQ_MODEL:
-            process.env.LARGE_GROQ_MODEL || "llama-3.1-8b-instant",
+            process.env.LARGE_GROQ_MODEL || "qwen/qwen3-32b",
           POSTGRES_URL:
             process.env.POSTGRES_URL ||
             process.env.POSTGRES_DATABASE_URL ||
@@ -120,6 +116,10 @@ class AgentRuntimeManager {
       // Initialize runtime - this calls ensureAgentExists internally (runtime.ts:405)
       // which creates both the agent record AND its entity record
       await this.runtime.initialize();
+      
+      // Log registered services
+      const services = Array.from(this.runtime.getAllServices().keys());
+      console.log("[AgentRuntime] Registered services:", services);
     }
     return this.runtime;
   }

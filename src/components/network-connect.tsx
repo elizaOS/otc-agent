@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Dialog, DialogBody, DialogTitle } from "@/components/dialog";
 import { Button } from "@/components/button";
 import { useMultiWallet } from "@/components/multiwallet";
+import { BaseLogo, SolanaLogo } from "@/components/icons";
 
 export function NetworkConnectButton({
   className,
@@ -40,31 +41,39 @@ export function NetworkConnectButton({
       >
         {children ?? "Connect"}
       </Button>
-      <Dialog open={open} onClose={setOpen} size="sm">
-        <div className="p-4">
-          <DialogTitle>Choose a network</DialogTitle>
-          <DialogBody className="pt-2">
+      <Dialog open={open} onClose={setOpen} size="lg">
+        <div className="p-6">
+          <DialogTitle className="text-center mb-2">Choose a network</DialogTitle>
+          <DialogBody className="pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
+              <div
                 onClick={onChooseEvm}
-                className="rounded-xl p-4 sm:p-5 text-left transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border border-[#0047e5] hover:brightness-110 hover:shadow-md active:scale-[0.99] focus:outline-none focus:ring-2"
+                className="group rounded-xl p-6 text-left transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
               >
-                <div className="text-sm font-semibold">Base</div>
-                <div className="text-xs text-white/80">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <BaseLogo className="w-6 h-6" />
+                  </div>
+                  <div className="text-lg font-bold">Base</div>
+                </div>
+                <div className="text-sm text-white/70 group-hover:text-white/90 transition-colors">
                   Connect with RainbowKit
                 </div>
-              </button>
-              <button
-                type="button"
+              </div>
+              <div
                 onClick={onChooseSolana}
-                className="rounded-xl p-4 sm:p-5 text-left transition-all duration-200 cursor-pointer text-white bg-gradient-to-r from-[#9945FF] via-[#8752F3] to-[#14F195] hover:brightness-110 hover:shadow-md focus:outline-none focus:ring-2"
+                className="group rounded-xl p-6 text-left transition-all duration-200 cursor-pointer text-white bg-gradient-to-br from-[#9945FF] via-[#8752F3] to-[#14F195] border-2 border-[#9945FF]/50 hover:border-[#14F195]/50 hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#9945FF] focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
               >
-                <div className="text-sm font-semibold">Solana</div>
-                <div className="text-xs text-white/85">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <SolanaLogo className="w-6 h-6" />
+                  </div>
+                  <div className="text-lg font-bold">Solana</div>
+                </div>
+                <div className="text-sm text-white/70 group-hover:text-white/90 transition-colors">
                   Connect with Solana Wallet
                 </div>
-              </button>
+              </div>
             </div>
           </DialogBody>
         </div>

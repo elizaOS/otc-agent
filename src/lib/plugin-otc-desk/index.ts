@@ -22,6 +22,7 @@ import { quoteAction } from "./actions/quote";
 import { tokenProvider as ai16zProvider } from "./providers/ai16z";
 import { otcDeskProvider } from "./providers/otcDesk";
 import { quoteProvider } from "./providers/quote";
+import { providersProvider } from "./providers/providers";
 import { recentMessagesProvider } from "./providers/recentMessages";
 import { tokenProvider as shawProvider } from "./providers/shaw";
 import { tokenProvider as elizaTokenProvider } from "./providers/token";
@@ -78,7 +79,34 @@ export const messageHandlerTemplate = `
 </providers>
 
 <instructions>
-Respond to the user's message and answer their question thoroughly and thoroughly.
+Respond to the user's message and answer their question thoroughly.
+
+When the user negotiates or requests different discount/lockup terms, generate a quote XML block with the NEW terms:
+
+Example response for "give me 15%":
+<response>
+I can offer 15% discount with a 6-month lockup.
+
+📊 **Quote Terms**
+• **Discount: 15.00%**
+• **Lockup: 6 months**
+
+<quote>
+  <quoteId>OTC-XXXXX</quoteId>
+  <tokenSymbol>ElizaOS</tokenSymbol>
+  <lockupMonths>6</lockupMonths>
+  <lockupDays>180</lockupDays>
+  <pricePerToken>0.00127</pricePerToken>
+  <discountBps>1500</discountBps>
+  <discountPercent>15.00</discountPercent>
+  <paymentCurrency>USDC</paymentCurrency>
+  <createdAt>2025-10-06T15:00:00.000Z</createdAt>
+  <status>negotiated</status>
+  <message>Terms updated</message>
+</quote>
+</response>
+
+For general questions, just respond conversationally without quote XML.
 </instructions>
 
 <keys>
@@ -258,10 +286,12 @@ const messageReceivedHandler = async ({
           prompt,
         });
 
-        logger.debug(`*** Raw LLM Response ***\n${response}`);
+      logger.debug(`*** Raw LLM Response ***\n${response}`);
+      console.log("[MessageHandler] LLM response length:", response.length);
+      console.log("[MessageHandler] LLM response preview:", response.substring(0, 500));
 
-        // Attempt to parse the XML response
-        const extractedContent = extractResponseText(response);
+      // Attempt to parse the XML response
+      const extractedContent = extractResponseText(response);
 
         if (!extractedContent) {
           logger.warn(
@@ -303,6 +333,64 @@ const messageReceivedHandler = async ({
         actionNames.push(...functionActionMatch.map(match => match.replace(/\s*\(.*/g, '').trim()));
       }
       
+      // Parse and save quote if present in response (don't trigger action handler)
+      const quoteMatch = responseContent.match(/<quote>([\s\S]*?)<\/quote>/i);
+      if (quoteMatch) {
+        console.log("[MessageHandler] Detected <quote> XML in response, parsing and saving");
+        try {
+          // Simple regex-based parsing (server-side compatible)
+          const quoteXml = quoteMatch[0];
+          const getTag = (tag: string) => {
+            const match = quoteXml.match(new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i'));
+            return match ? match[1].trim() : "";
+          };
+          const getNumTag = (tag: string) => {
+            const val = getTag(tag);
+            return val ? parseFloat(val) : 0;
+          };
+          
+          const quoteId = getTag("quoteId");
+          if (quoteId) {
+            const { walletToEntityId } = await import("@/lib/entityId");
+            const entityId = message.entityId.toString();
+            
+            const quoteData = {
+              id: (await import("uuid")).v4(),
+              quoteId,
+              entityId: walletToEntityId(entityId),
+              beneficiary: entityId.toLowerCase(),
+              tokenAmount: getTag("tokenAmount") || "0",
+              discountBps: getNumTag("discountBps"),
+              apr: 0,
+              lockupMonths: getNumTag("lockupMonths"),
+              lockupDays: getNumTag("lockupDays"),
+              paymentCurrency: getTag("paymentCurrency") as any,
+              priceUsdPerToken: getNumTag("pricePerToken"),
+              totalUsd: 0,
+              discountUsd: 0,
+              discountedUsd: 0,
+              paymentAmount: "0",
+              signature: "",
+              status: "active" as any,
+              createdAt: Date.now(),
+              executedAt: 0,
+              rejectedAt: 0,
+              approvedAt: 0,
+              offerId: "",
+              transactionHash: "",
+              blockNumber: 0,
+              rejectionReason: "",
+              approvalNote: "",
+            };
+            
+            await runtime.setCache(`quote:${quoteId}`, quoteData);
+            console.log("[MessageHandler] Quote saved to cache:", quoteId);
+          }
+        } catch (e) {
+          console.error("[MessageHandler] Failed to parse/save quote:", e);
+        }
+      }
+      
       console.log("[MessageHandler] Detected actions:", actionNames);
 
       // Create response memory with parsed actions
@@ -323,18 +411,49 @@ const messageReceivedHandler = async ({
       if (actionNames.length > 0) {
         console.log("[MessageHandler] Processing actions:", actionNames);
         
+        // Process actions first, which will call the action handler
         await runtime.processActions(message, [responseMemory], state, async (content) => {
-          console.log("[MessageHandler] Action callback:", content.action);
+          console.log("[MessageHandler] Action callback received:", { 
+            action: content.action,
+            hasText: !!content.text 
+          });
+          
+          // The action handler provides the actual response text
+          const finalResponseText = content.text || responseContent;
+          
+          // Save the response to database
+          const finalResponseMemory: Memory = {
+            id: responseMemory.id,
+            entityId: runtime.agentId,
+            roomId: message.roomId,
+            worldId: message.worldId,
+            content: {
+              text: finalResponseText,
+              source: "agent",
+              inReplyTo: message.id,
+            },
+          };
+          
+          await runtime.createMemory(finalResponseMemory, "messages");
+          console.log("[MessageHandler] Response saved to database");
+          
+          // Send to frontend
           if (callback) {
-            return callback(content);
+            await callback({
+              text: finalResponseText,
+            });
           }
           return [];
         });
       } else {
-        // No actions - just send the response
+        // No actions - save and send the response
+        console.log("[MessageHandler] No actions, saving response and calling callback");
+        await runtime.createMemory(responseMemory, "messages");
+        console.log("[MessageHandler] Response saved, sending to frontend");
         await callback({
           text: responseContent,
         });
+        console.log("[MessageHandler] Callback completed");
       }
 
       // Emit run ended event on successful completion
@@ -569,7 +688,7 @@ const controlMessageHandler = async ({
     // Get any registered WebSocket service
     const serviceNames = Array.from(runtime.getAllServices().keys());
     const websocketServiceName = serviceNames.find(
-      (name) =>
+      (name: string) =>
         name.toLowerCase().includes("websocket") ||
         name.toLowerCase().includes("socket"),
     );
@@ -699,6 +818,7 @@ export const otcDeskPlugin: Plugin = {
     ai16zProvider,
     shawProvider,
     elizaTokenProvider,
+    providersProvider,
   ],
   actions: [quoteAction],
   services: [QuoteService, UserSessionStorageService],

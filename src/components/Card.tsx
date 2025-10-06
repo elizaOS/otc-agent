@@ -7,6 +7,8 @@ interface ICard {
   description: string;
   button: string;
   note?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
 }
 
 export default function Card({
@@ -15,6 +17,8 @@ export default function Card({
   description,
   button,
   note,
+  onClick,
+  disabled,
 }: ICard) {
   return (
     <div className="backdrop-blur-md bg-white/5 p-4 sm:p-5 lg:p-6 rounded-lg border border-[#FFB79B] h-auto min-h-[200px] sm:min-h-[240px] lg:h-[270px] w-full xl:flex-1 flex flex-col">
@@ -43,9 +47,12 @@ export default function Card({
           </p>
         </div>
       ) : null}
-      <button className="cursor-pointer w-full bg-orange-500/10 text-orange-500 py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium hover:bg-orange-500/20 transition-colors mt-auto">
+      <button 
+        onClick={onClick}
+        disabled={disabled}
+        className={ disabled ? "w-full bg-blue-500/10 text-blue-500 py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium mt-auto" : "cursor-pointer w-full bg-orange-500/10 text-orange-500 py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium hover:bg-orange-500/20 transition-colors mt-auto" }
+      >
         {button}
-        <ArrowRight size={14} />
       </button>
     </div>
   );

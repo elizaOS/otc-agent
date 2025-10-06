@@ -21,8 +21,6 @@ export interface OTCQuote {
   paymentSymbol: string;
   ethPrice?: number;
   createdAt: string;
-  expiresAt: string;
-  expiresInSeconds: number;
   status?: string;
   message: string;
 }
@@ -132,8 +130,6 @@ export function parseOTCQuoteXML(xmlString: string): OTCQuote | null {
       paymentSymbol: getElementText("paymentSymbol"),
       ethPrice: getElementNumber("ethPrice") || undefined,
       createdAt: getElementText("createdAt"),
-      expiresAt: getElementText("expiresAt"),
-      expiresInSeconds: getElementNumber("expiresInSeconds"),
       status: getElementText("status") || undefined,
       message: getElementText("message"),
     };

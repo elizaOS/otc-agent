@@ -1,11 +1,12 @@
 import { Provider } from "@elizaos/core";
 
 export const tokenProvider: Provider = {
-  name: "ElizaOS",
+  name: "Shaw",
   description: "Information about Shaw Walters, the founder of ElizaOS",
   position: 99,
   dynamic: true,
   get: async () => {
+    console.log("GET SHAW PROVIDER")
     const text = `Shaw Walters (known as @shawmakesmagic) is a programmer, entrepreneur, and AI innovator based in San Francisco. He is recognized as the founder and lead developer of ai16z (now ElizaOS)—a pioneering open-source platform for autonomous AI agents in Web3 environments.
 
 Key Contributions:

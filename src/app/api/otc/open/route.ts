@@ -33,7 +33,8 @@ export async function GET() {
     } as any)) as bigint[];
 
     const offers = await Promise.all(
-      openOfferIds.map(async (id) => {
+      (openOfferIds || []).map(async (id) => {
+        if (!id) return null;
         const o = (await publicClient.readContract({
           address: OTC_ADDRESS,
           abi,
@@ -61,8 +62,8 @@ export async function GET() {
         };
       }),
     );
-
-    return NextResponse.json({ offers });
+    const items = (offers || []).filter((x): x is NonNullable<typeof x> => x !== null);
+    return NextResponse.json({ offers: items });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },

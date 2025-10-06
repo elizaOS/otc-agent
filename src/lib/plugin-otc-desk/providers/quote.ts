@@ -1,17 +1,27 @@
-// Current quote provider using database-backed runtime cache ONLY
-// NO in-memory Maps - serverless compatible
-
+import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 import { IAgentRuntime, Memory, Provider, ProviderResult } from "@elizaos/core";
-import { formatElizaAmount } from "../services/priceFeed";
+import { agentRuntime } from "../../agent-runtime";
 import { walletToEntityId } from "../../entityId";
+import { formatElizaAmount } from "../services/priceFeed";
 import type { PaymentCurrency, QuoteMemory } from "../types";
 
+
 export const quoteProvider: Provider = {
-  name: "currentElizaQuote",
+  name: "ElizaQuote",
   get: async (
     runtime: IAgentRuntime,
     message: Memory,
   ): Promise<ProviderResult> => {
+    const messageText = message.content?.text || "";
+    
+    // Only provide quote context if user is asking about quotes/terms/pricing
+    const isQuoteRelated = /quote|discount|lockup|price|term|deal|offer|buy|purchase|%|percent/i.test(messageText);
+    
+    if (!isQuoteRelated) {
+      console.log('[QuoteProvider] Skipping - not quote-related:', messageText.substring(0, 50));
+      return { text: "" }; // Return empty to not pollute context
+    }
+
     const walletAddress =
       (message as any).entityId ||
       (message as any).entityId ||
@@ -20,15 +30,16 @@ export const quoteProvider: Provider = {
 
     console.log('[QuoteProvider] get() called for wallet:', walletAddress);
 
-    // Use runtime service
-    const QuoteService = runtime.getService<any>("QuoteService");
-    const currentQuote = QuoteService ? await QuoteService.getQuoteByWallet(walletAddress) : undefined;
+    // Use runtime cache directly
+    const entityId = walletToEntityId(walletAddress);
+    const quoteId = `OTC-${entityId.substring(0, 12).toUpperCase()}`;
+    const currentQuote = await runtime.getCache<QuoteMemory>(`quote:${quoteId}`);
     
-    console.log('[QuoteProvider] Service result:', currentQuote ? currentQuote.quoteId : 'null');
+    console.log('[QuoteProvider] Cache result:', currentQuote ? currentQuote.quoteId : 'null');
 
     if (!currentQuote) {
       return {
-        text: `No active ElizaOS quote. Use 'create quote' to generate a quote for ElizaOS tokens.`,
+        text: `No active ElizaOS quote. Offer them a deal on ElizaOS tokens with a discount and lockup.`,
       };
     }
 
@@ -39,10 +50,10 @@ export const quoteProvider: Provider = {
 Current Agent Quote (ID: ${currentQuote.quoteId}):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 Amount: ${Number(currentQuote.tokenAmount) > 0 ? formattedAmount + " ElizaOS" : "Choose amount at acceptance"}
-💰 Price per Token: $${currentQuote.priceUsdPerToken.toFixed(8)}
-💵 Total Value: $${currentQuote.totalUsd.toFixed(2)}
+💰 Price per Token: Determined by Chainlink oracle on-chain at execution
+💵 Total Value: $${currentQuote.totalUsd.toFixed(2)} (estimated at creation)
 🎯 Discount: ${currentQuote.discountBps / 100}% (${currentQuote.discountBps} bps)
-✨ Your Price: $${currentQuote.discountedUsd.toFixed(2)}
+✨ Your Price: $${currentQuote.discountedUsd.toFixed(2)} (estimated at creation)
 💳 Payment Method: ${currentQuote.paymentCurrency}
 🔒 Lockup: ${currentQuote.lockupMonths} months
 
@@ -77,11 +88,17 @@ You'll automatically receive your tokens when the lockup period ends.`.trim(),
 export async function getUserQuote(walletAddress: string): Promise<QuoteMemory | undefined> {
   const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
-  const QuoteService = runtime.getService<any>("QuoteService");
   
-  if (!QuoteService) return undefined;
+  // Use runtime cache directly instead of service
+  const entityId = walletToEntityId(walletAddress);
+  const quoteId = `OTC-${entityId.substring(0, 12).toUpperCase()}`;
+  const quote = await runtime.getCache<QuoteMemory>(`quote:${quoteId}`);
   
-  return await QuoteService.getQuoteByWallet(walletAddress);
+  if (!quote || quote.status !== "active") {
+    return undefined;
+  }
+  
+  return quote;
 }
 
 export async function setUserQuote(
@@ -90,10 +107,8 @@ export async function setUserQuote(
     tokenAmount: string;
     discountBps: number;
     paymentCurrency: PaymentCurrency;
-    priceUsdPerToken: number;
     totalUsd: number;
     discountedUsd: number;
-    expiresAt: number;
     createdAt: number;
     quoteId: string;
     apr: number;
@@ -111,51 +126,64 @@ export async function setUserQuote(
     lockupMonths: quote.lockupMonths
   });
 
-  const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
-  const QuoteService = runtime.getService<any>("QuoteService");
-
-  if (!QuoteService) {
-    console.error("[setUserQuote] QuoteService not available!");
-    throw new Error("QuoteService not available");
-  }
-
-  // Expire old quotes FIRST
-  await QuoteService.expireUserQuotes(walletAddress);
   
-  // Create new quote and return the actual stored quote with real ID
-  const createdQuote = await QuoteService.createQuote({
+  // Use runtime cache directly instead of QuoteService
+  const quoteId = `OTC-${entityId.substring(0, 12).toUpperCase()}`;
+  const lockupDays = quote.lockupMonths * 30;
+  const now = Date.now();
+  
+  // Generate signature
+  const secret = process.env.QUOTE_SIGNATURE_SECRET || "default-secret";
+  const payload = `${quoteId}:${entityId}:${normalized}:${quote.tokenAmount}:${quote.discountBps}:${quote.lockupMonths}`;
+  const crypto = await import("crypto");
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  
+  const quoteData: QuoteMemory = {
+    id: (await import("uuid")).v4(),
+    quoteId,
     entityId,
     beneficiary: normalized,
     tokenAmount: quote.tokenAmount,
     discountBps: quote.discountBps,
     apr: quote.apr,
     lockupMonths: quote.lockupMonths,
+    lockupDays,
     paymentCurrency: quote.paymentCurrency,
-    priceUsdPerToken: quote.priceUsdPerToken,
     totalUsd: quote.totalUsd,
     discountUsd: quote.totalUsd - quote.discountedUsd,
     discountedUsd: quote.discountedUsd,
     paymentAmount: quote.paymentAmount,
-    expiresAt: new Date(quote.expiresAt),
-  });
+    signature,
+    status: "active",
+    createdAt: now,
+    executedAt: 0,
+    rejectedAt: 0,
+    approvedAt: 0,
+    offerId: "",
+    transactionHash: "",
+    blockNumber: 0,
+    rejectionReason: "",
+    approvalNote: "",
+  };
   
-  console.log('[setUserQuote] ✅ New quote created:', createdQuote.quoteId);
-  return createdQuote;
+  await runtime.setCache(`quote:${quoteId}`, quoteData);
+  
+  console.log('[setUserQuote] ✅ New quote created:', quoteId);
+  return quoteData;
 }
 
-export function deleteUserQuote(walletAddress: string): void {
+export async function deleteUserQuote(walletAddress: string): Promise<void> {
   // In serverless, we can't delete from memory - just mark as expired in DB
   console.log('[QuoteProvider] deleteUserQuote called for:', walletAddress);
 }
 
 export async function loadActiveQuotes(): Promise<void> {
-  const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
-  const QuoteService = runtime.getService<any>("QuoteService");
+  const quoteService = runtime.getService<QuoteService>(QuoteService.serviceName);
   
-  if (QuoteService) {
-    const activeQuotes = await QuoteService.getActiveQuotes();
+  if (quoteService) {
+    const activeQuotes = await quoteService.getActiveQuotes();
     console.log(`[QuoteProvider] Loaded ${activeQuotes.length} active quotes`);
   }
 }

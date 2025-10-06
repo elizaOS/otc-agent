@@ -10,6 +10,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia, hardhat } from "viem/chains";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
+import { parseOfferStruct } from "@/lib/otc-helpers";
 
 function getChain() {
   const env = process.env.NODE_ENV;
@@ -80,12 +81,14 @@ export async function POST(request: NextRequest) {
     const id = BigInt(offerId as any);
 
     // Verify intention: recovered signer must match offer.beneficiary
-    const offer = (await publicClient.readContract({
+    const offerRaw = (await publicClient.readContract({
       address: OTC_ADDRESS,
       abi,
       functionName: "offers",
       args: [id],
     } as any)) as any;
+
+    const offer = parseOfferStruct(offerRaw);
 
     if (!offer || offer.beneficiary === undefined) {
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });

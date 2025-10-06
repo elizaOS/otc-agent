@@ -3,23 +3,23 @@
 import { ArrowUpIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { Loader2 } from "lucide-react";
-import { memo } from "react";
+import { forwardRef, memo } from "react";
 
 import { Button } from "@/components/button";
 
-const ChatForm = memo(function ChatForm({
-  input,
-  onInputChange,
-  onSubmit,
-  isLoading,
-  placeholder,
-}: {
+const ChatForm = memo(forwardRef<HTMLTextAreaElement, {
   input: string;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
   placeholder?: string;
-}) {
+}>(function ChatForm({
+  input,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  placeholder,
+}, ref) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -37,6 +37,7 @@ const ChatForm = memo(function ChatForm({
     >
       <div className="relative flex-1 w-full">
         <textarea
+          ref={ref}
           autoFocus
           aria-label="Prompt"
           value={input}
@@ -80,21 +81,21 @@ const ChatForm = memo(function ChatForm({
       </div>
     </form>
   );
-});
+}));
 
-export const TextareaWithActions = memo(function TextareaWithActions({
-  input,
-  onInputChange,
-  onSubmit,
-  isLoading,
-  placeholder,
-}: {
+export const TextareaWithActions = memo(forwardRef<HTMLTextAreaElement, {
   input: string;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
   placeholder?: string;
-}) {
+}>(function TextareaWithActions({
+  input,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  placeholder,
+}, ref) {
   return (
     <div className="flex flex-col w-full h-[100px]">
       <span
@@ -119,6 +120,7 @@ export const TextareaWithActions = memo(function TextareaWithActions({
           ])}
         >
           <ChatForm
+            ref={ref}
             input={input}
             onInputChange={onInputChange}
             onSubmit={onSubmit}
@@ -129,4 +131,4 @@ export const TextareaWithActions = memo(function TextareaWithActions({
       </span>
     </div>
   );
-});
+}));

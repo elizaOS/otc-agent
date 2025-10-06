@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { agentRuntime } from "@/lib/agent-runtime";
 import { v4 as uuidv4 } from "uuid";
-import { quoteAction } from "@/lib/plugin-otc-desk/actions/quote";
+import { walletToEntityId } from "@/lib/entityId";
 import { stringToUuid } from "@elizaos/core";
 
 // GET /api/rooms - Get user's rooms
@@ -80,59 +80,98 @@ export async function POST(request: NextRequest) {
 
     console.log("[Rooms API] Created room:", roomId, "for entity:", entityId);
 
-    // Create initial default quote for this user
+    // Create initial welcome message with default quote
     try {
-      console.log("[Rooms API] Creating initial quote for wallet:", entityId);
+      console.log("[Rooms API] Creating initial welcome message for wallet:", entityId);
       
-      const memory: any = {
+      // Ensure entity exists in database to prevent foreign key errors
+      const userEntityId = walletToEntityId(entityId);
+      await runtime.ensureConnection({
+        entityId: userEntityId as any,
+        roomId: roomId as any,
+        userName: entityId,
+        name: entityId,
+        source: "web",
+        channelId: roomId,
+        serverId: "otc-desk-server",
+        type: "DM" as any,
+        worldId: stringToUuid("otc-desk-world") as any,
+      });
+      
+      // Save initial quote to cache
+      const initialQuoteId = `OTC-${userEntityId.substring(0, 12).toUpperCase()}`;
+      const initialQuoteData = {
         id: uuidv4(),
-        content: {
-          text: "create quote for 200000 ElizaOS at 10% discount payable in USDC",
-        },
-        entityId,
-        agentId: runtime.agentId,
-        roomId: roomId,
+        quoteId: initialQuoteId,
+        entityId: userEntityId,
+        beneficiary: entityId.toLowerCase(),
+        tokenAmount: "0",
+        discountBps: 1000,
+        apr: 0,
+        lockupMonths: 5,
+        lockupDays: 150,
+        paymentCurrency: "USDC" as any,
+        priceUsdPerToken: 0.00127,
+        totalUsd: 0,
+        discountUsd: 0,
+        discountedUsd: 0,
+        paymentAmount: "0",
+        signature: "",
+        status: "active" as any,
         createdAt: Date.now(),
+        executedAt: 0,
+        rejectedAt: 0,
+        approvedAt: 0,
+        offerId: "",
+        transactionHash: "",
+        blockNumber: 0,
+        rejectionReason: "",
+        approvalNote: "",
       };
-
-      let agentResponseText = "";
-      let quoteCreated = false;
       
-      await (quoteAction.handler as any)(
-        runtime as any,
-        memory,
-        undefined as any,
-        {},
-        (async (result: { text?: string }) => {
-          agentResponseText = result?.text || "";
-          quoteCreated = true;
-          console.log("[Rooms API] Initial quote created, response length:", agentResponseText.length);
-          return [] as any;
-        }) as any,
-      );
-
-      if (agentResponseText && agentResponseText.trim().length > 0) {
-        const agentMessage = {
-          id: uuidv4(),
-          roomId,
-          entityId: runtime.agentId,
-          agentId: runtime.agentId,
-          content: {
-            text: agentResponseText,
-            type: "agent",
-          },
-          createdAt: Date.now(),
-        } as any;
-
-        await runtime.createMemory(agentMessage, "messages");
-        console.log("[Rooms API] Initial quote message saved to room");
-      }
+      await runtime.setCache(`quote:${initialQuoteId}`, initialQuoteData);
+      console.log("[Rooms API] Initial quote saved to cache:", initialQuoteId);
       
-      if (quoteCreated) {
-        console.log("[Rooms API] ✅ Initial quote successfully created for", entityId);
-      }
+      // Create a welcome message with default quote terms
+      const welcomeMessage = `I can offer a 10.00% discount with a 5-month lockup.
+
+📊 **Quote Terms** (ID: ${initialQuoteId})
+• **Discount: 10.00%**
+• **Lockup: 5 months** (150 days)
+
+<!-- XML_START -->
+
+<quote>
+  <quoteId>${initialQuoteId}</quoteId>
+  <tokenSymbol>ElizaOS</tokenSymbol>
+  <lockupMonths>5</lockupMonths>
+  <lockupDays>150</lockupDays>
+  <pricePerToken>0.00127</pricePerToken>
+  <discountBps>1000</discountBps>
+  <discountPercent>10.00</discountPercent>
+  <paymentCurrency>USDC</paymentCurrency>
+  <createdAt>${new Date().toISOString()}</createdAt>
+  <status>negotiated</status>
+  <message>Amount is selected during acceptance. Terms will be validated on-chain.</message>
+</quote>
+<!-- XML_END -->`;
+
+      const agentMessage = {
+        id: uuidv4(),
+        roomId,
+        entityId: runtime.agentId,
+        agentId: runtime.agentId,
+        content: {
+          text: welcomeMessage,
+          type: "agent",
+        },
+        createdAt: Date.now(),
+      } as any;
+
+      await runtime.createMemory(agentMessage, "messages");
+      console.log("[Rooms API] ✅ Initial welcome message created");
     } catch (initErr) {
-      console.error("[Rooms API] Failed to create initial quote:", initErr);
+      console.error("[Rooms API] Failed to create initial message:", initErr);
     }
 
     return NextResponse.json({

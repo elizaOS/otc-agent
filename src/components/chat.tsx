@@ -9,7 +9,8 @@ import { useMultiWallet } from "@/components/multiwallet";
 import { NetworkConnectButton } from "@/components/network-connect";
 import { LoadingSpinner } from "@/components/spinner";
 import { TextareaWithActions } from "@/components/textarea-with-actions";
-import { InitialQuoteDisplay } from "@/components/initial-quote-display";
+import { AcceptQuoteModal } from "@/components/accept-quote-modal";
+import { Button } from "@/components/button";
 import { CHAT_SOURCE, USER_NAME } from "@/constants";
 import type { ChatMessage } from "@/types/chat-message";
 import { parseMessageXML } from "@/utils/xml-parser";
@@ -31,11 +32,16 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     useMultiWallet();
   const [showConnectOverlay, setShowConnectOverlay] = useState<boolean>(false);
   const [currentQuote, setCurrentQuote] = useState<any>(null);
+  const [showAcceptModal, setShowAcceptModal] = useState<boolean>(false);
+  const [isOfferGlowing, setIsOfferGlowing] = useState<boolean>(false);
+  const [showClearChatModal, setShowClearChatModal] = useState<boolean>(false);
 
   // --- Refs ---
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageTimestampRef = useRef<number>(0);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const previousQuoteIdRef = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // (Removed duplicate time helper; consolidated in utils/time if needed elsewhere)
 
@@ -53,21 +59,13 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         setRoomId(storedRoomId);
       }
       setShowConnectOverlay(false);
+      setInputDisabled(false);
     } else {
       // Disconnected: lock the chat and show overlay
       setUserId(null);
       setInputDisabled(true);
-      // Show only on first visit until user dismisses
-      try {
-        const seen = localStorage.getItem("otc-desk-connect-overlay-seen");
-        const dismissed = localStorage.getItem(
-          "otc-desk-connect-overlay-dismissed",
-        );
-        const shouldShow = !seen && !dismissed;
-        setShowConnectOverlay(shouldShow);
-      } catch {
-        setShowConnectOverlay(true);
-      }
+      // Always show overlay when wallet is not connected
+      setShowConnectOverlay(true);
     }
   }, [unifiedConnected, unifiedUserId, initialRoomId]);
 
@@ -488,6 +486,11 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
 
       await sendMessage(trimmed);
       setInput("");
+      
+      // Refocus the textarea after sending
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
     },
     [input, unifiedConnected, entityId, roomId, createNewRoom, sendMessage],
   );
@@ -507,91 +510,163 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     container.scrollTop = container.scrollHeight;
   }, [messages]);
 
-  // Poll for latest quote from API
+  // Extract current quote from messages
   useEffect(() => {
-    if (!entityId || !unifiedConnected) {
-      console.log('[Quote Poll] Not polling - entityId:', entityId, 'connected:', unifiedConnected);
+    if (!messages.length) {
+      console.log('[Quote Update] No messages yet');
       return;
     }
 
-    const fetchLatestQuote = async () => {
-      console.log('[Quote Poll] Fetching quote for entityId:', entityId);
-      const response = await fetch(`/api/quote/latest?entityId=${entityId}`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[Quote Poll] Response:', data);
-        if (data.quote) {
-          console.log('[Quote Poll] Setting quote:', data.quote.quoteId);
-          setCurrentQuote(data.quote);
-        } else {
-          console.log('[Quote Poll] No quote in response');
+    console.log('[Quote Update] Scanning', messages.length, 'messages for quote');
+
+    // Find the latest quote in messages
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (!msg || msg.name === USER_NAME) continue;
+      
+      try {
+        const parsed = parseMessageXML(
+          typeof msg.text === "string" ? msg.text : (msg as any).content?.text || ""
+        );
+        
+        if (parsed?.type === "otc_quote" && parsed.data) {
+          const newQuote = parsed.data;
+          const newQuoteId = newQuote.quoteId;
+          const prevQuoteId = previousQuoteIdRef.current;
+          
+          // Only update if quote actually changed
+          if (prevQuoteId !== newQuoteId) {
+            console.log('[Quote Update] Quote changed:', { prevQuoteId, newQuoteId });
+            
+            // Trigger glow effect only if there was a previous quote
+            if (prevQuoteId) {
+              console.log('[Quote Update] Triggering glow effect');
+              setIsOfferGlowing(true);
+              setTimeout(() => {
+                console.log('[Quote Update] Stopping glow effect');
+                setIsOfferGlowing(false);
+              }, 5000);
+            }
+            
+            // Update the ref and state
+            previousQuoteIdRef.current = newQuoteId;
+            setCurrentQuote(newQuote);
+          }
+          break;
         }
-      } else {
-        console.error('[Quote Poll] API error:', response.status);
+      } catch (e) {
+        console.error('[Quote Update] Error parsing message:', e);
       }
-    };
 
-    // Fetch immediately
-    fetchLatestQuote();
+    }
+  }, [messages]);
 
-    // Then poll every 5 seconds
-    const interval = setInterval(fetchLatestQuote, 5000);
-    return () => clearInterval(interval);
-  }, [entityId, unifiedConnected, messages]);
+  const handleAcceptOffer = () => {
+    setShowAcceptModal(true);
+  };
+
+  const handleClearChat = useCallback(async () => {
+    if (!entityId) return;
+
+    try {
+      // Clear local storage for this wallet
+      localStorage.removeItem(`otc-desk-room-${entityId}`);
+      
+      // Create a new room
+      const newRoomId = await createNewRoom();
+      if (newRoomId) {
+        // Clear messages and reset state
+        setMessages([]);
+        setCurrentQuote(null);
+        previousQuoteIdRef.current = null;
+        setRoomId(newRoomId);
+        console.log("[ClearChat] Created new room:", newRoomId);
+      }
+      
+      setShowClearChatModal(false);
+    } catch (error) {
+      console.error("[ClearChat] Failed to clear chat:", error);
+    }
+  }, [entityId, createNewRoom]);
 
   return (
-    <ChatBody
-      messages={messages}
-      isLoadingHistory={isLoadingHistory}
-      isAgentThinking={isAgentThinking}
-      input={input}
-      setInput={setInput}
-      handleSubmit={handleSubmit}
-      inputDisabled={inputDisabled}
-      isConnected={unifiedConnected}
-      messagesContainerRef={messagesContainerRef}
-      showConnectOverlay={showConnectOverlay}
-      setShowConnectOverlay={setShowConnectOverlay}
-      currentQuote={currentQuote}
-    />
+    <>
+      <ChatBody
+        messages={messages}
+        isLoadingHistory={isLoadingHistory}
+        isAgentThinking={isAgentThinking}
+        input={input}
+        setInput={setInput}
+        handleSubmit={handleSubmit}
+        inputDisabled={inputDisabled}
+        isConnected={unifiedConnected}
+        messagesContainerRef={messagesContainerRef}
+        textareaRef={textareaRef}
+        showConnectOverlay={showConnectOverlay}
+        setShowConnectOverlay={setShowConnectOverlay}
+        currentQuote={currentQuote}
+        onAcceptOffer={handleAcceptOffer}
+        isOfferGlowing={isOfferGlowing}
+        onClearChat={() => setShowClearChatModal(true)}
+      />
+      <AcceptQuoteModal
+        isOpen={showAcceptModal}
+        onClose={() => setShowAcceptModal(false)}
+        initialQuote={currentQuote}
+      />
+      
+      {/* Clear Chat Confirmation Modal */}
+      <Dialog
+        open={showClearChatModal}
+        onClose={() => setShowClearChatModal(false)}
+      >
+        <div className="bg-white dark:bg-zinc-900 max-w-md">
+          <h3 className="text-xl font-semibold bg-red-500 dark:bg-red-500 mb-4 px-4 py-2">
+            Clear Chat History?
+          </h3>
+          <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+            This will permanently delete all messages and reset the agent's memory of your conversation. 
+            Your current quote will be reset to default terms. This action cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              onClick={() => setShowClearChatModal(false)}
+              className="bg-zinc-200 dark:bg-zinc-800 rounded-lg"
+            >
+              <div className="px-4 py-2">
+              Cancel
+              </div>
+            </Button>
+            <Button
+              onClick={handleClearChat}
+              color="red"
+            >
+              <div className="px-4 py-2 bg-red-500 dark:bg-red-500 rounded-lg"> 
+              Clear Chat
+              </div>
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
   );
 };
 
 function ChatHeader({
   messages,
   apiQuote,
+  onAcceptOffer,
+  isOfferGlowing,
+  onClearChat,
 }: {
   messages: ChatMessage[];
   apiQuote: any;
+  onAcceptOffer: () => void;
+  isOfferGlowing: boolean;
+  onClearChat: () => void;
 }) {
-  // Find latest assistant quote from messages first
-  let currentQuote: any = null;
-  try {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const m = messages[i];
-      if (!m || m.name === USER_NAME) continue;
-      const res = parseMessageXML(
-        typeof m.text === "string" ? m.text : (m as any).content?.text || "",
-      );
-      if (res?.type === "otc_quote") {
-        currentQuote = res.data;
-        break;
-      }
-    }
-  } catch {}
-
-  // Fallback to API quote if no quote found in messages
-  if (!currentQuote && apiQuote) {
-    currentQuote = {
-      quoteId: apiQuote.quoteId,
-      discountBps: apiQuote.discountBps,
-      discountPercent: apiQuote.discountBps / 100,
-      lockupMonths: apiQuote.lockupMonths,
-      lockupDays: apiQuote.lockupDays,
-      pricePerToken: apiQuote.priceUsdPerToken,
-      paymentCurrency: apiQuote.paymentCurrency,
-    };
-  }
+  // Use the quote passed from parent (extracted from messages)
+  const currentQuote = apiQuote;
 
   return (
     <div className="mb-3">
@@ -626,11 +701,26 @@ function ChatHeader({
                   months
                 </span>
               </div>
+              <Button
+                onClick={onAcceptOffer}
+                className={`!h-8 !px-3 !text-xs transition-all duration-300 !bg-orange-500 hover:!bg-orange-600 !text-white !border-orange-600 ${
+                  isOfferGlowing 
+                    ? 'shadow-lg shadow-orange-500/50 ring-2 ring-orange-400 animate-pulse' 
+                    : ''
+                }`}
+                color="orange"
+                title={`Accept Offer ${isOfferGlowing ? '(GLOWING)' : ''}`}
+              >
+                Accept Offer
+              </Button>
             </div>
           ) : null}
-          {/* <Button onClick={onClear} color="blue" disabled={!isConnected}>
+          <Button 
+            onClick={onClearChat} 
+            className="!h-8 !px-3 !text-xs bg-red-500 dark:bg-red-500 rounded-lg"
+          >
             Clear Chat
-          </Button> */}
+          </Button>
         </div>
       </div>
     </div>
@@ -647,9 +737,13 @@ function ChatBody({
   inputDisabled,
   isConnected,
   messagesContainerRef,
+  textareaRef,
   showConnectOverlay,
   setShowConnectOverlay,
   currentQuote,
+  onAcceptOffer,
+  isOfferGlowing,
+  onClearChat,
 }: {
   messages: ChatMessage[];
   isLoadingHistory: boolean;
@@ -660,9 +754,13 @@ function ChatBody({
   inputDisabled: boolean;
   isConnected: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
   showConnectOverlay: boolean;
   setShowConnectOverlay: (v: boolean) => void;
   currentQuote: any;
+  onAcceptOffer: () => void;
+  isOfferGlowing: boolean;
+  onClearChat: () => void;
 }) {
   return (
     <div className="flex flex-1 min-h-0 h-full w-full">
@@ -698,7 +796,7 @@ function ChatBody({
                       Get discounted ElizaOS tokens. Let&apos;s deal, anon.
                     </p>
                     <div className="inline-flex gap-2">
-                      <NetworkConnectButton className="!h-10">
+                      <NetworkConnectButton className="!h-10 !px-4 !py-2 bg-orange-500 dark:bg-orange-500 rounded-lg">
                         Connect
                       </NetworkConnectButton>
                     </div>
@@ -744,21 +842,11 @@ function ChatBody({
         </div>
       </Dialog>
 
-      {/* Main container with chat and quote panel */}
-      <div className="relative z-10 flex flex-1 min-h-0 gap-4 p-4">
-        {/* Chat section - Left side */}
+      {/* Main container - full width */}
+      <div className="relative z-10 flex flex-1 min-h-0 p-4">
+        {/* Chat section - Full width */}
         <div className="flex-1 flex flex-col h-full min-w-0">
-          <ChatHeader messages={messages} apiQuote={currentQuote} />
-
-          {/* Mobile Quote Card - Shows on small screens */}
-          {currentQuote && currentQuote.quoteId && isConnected && (
-            <div className="lg:hidden mb-4">
-              <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold px-1 mb-2">
-                Current Quote
-              </div>
-              <InitialQuoteDisplay quote={currentQuote} />
-            </div>
-          )}
+          <ChatHeader messages={messages} apiQuote={currentQuote} onAcceptOffer={onAcceptOffer} isOfferGlowing={isOfferGlowing} onClearChat={onClearChat} />
 
           {/* Chat Messages - only scrollable area */}
           <div
@@ -808,6 +896,7 @@ function ChatBody({
           {/* Input Area - pinned to bottom of chat */}
           <div className="mt-auto">
             <TextareaWithActions
+              ref={textareaRef}
               input={input}
               onInputChange={(e) => setInput(e.target.value)}
               onSubmit={handleSubmit}
@@ -820,43 +909,6 @@ function ChatBody({
             />
           </div>
         </div>
-
-        {/* Quote Panel - Right side (desktop only) */}
-        {(() => {
-          console.log('[Quote Panel] Render check:', {
-            isConnected,
-            hasCurrentQuote: !!currentQuote,
-            quoteId: currentQuote?.quoteId,
-            showPanel: isConnected && currentQuote && currentQuote.quoteId
-          });
-          
-          if (!isConnected || !currentQuote || !currentQuote.quoteId) {
-            return (
-              <div className="hidden lg:flex w-[380px] flex-shrink-0 flex-col p-4 bg-zinc-100 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">
-                <div className="text-sm font-semibold text-zinc-500 dark:text-zinc-500 mb-2">No Active Quote</div>
-                <div className="text-xs text-zinc-400 dark:text-zinc-500">
-                  {!isConnected ? 'Connect wallet to get started' : 'Ask Eliza for a quote!'}
-                </div>
-              </div>
-            );
-          }
-          
-          return (
-            <div className="hidden lg:flex w-[380px] flex-shrink-0 flex-col p-4 bg-zinc-100 dark:bg-zinc-900 rounded-xl border-2 border-orange-500/30 shadow-lg">
-              <div className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <span className="text-orange-500">📋</span>
-                Current Quote
-              </div>
-              <InitialQuoteDisplay quote={currentQuote} />
-              {currentQuote.expiresAt && (
-                <div className="mt-3 pt-3 border-t border-zinc-300 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                  Expires in {Math.max(0, Math.floor((currentQuote.expiresAt - Date.now()) / 1000 / 60))} min
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
       </div>
     </div>
   );

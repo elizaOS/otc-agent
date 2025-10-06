@@ -102,7 +102,7 @@ export function InitialQuoteDisplay({
         <Button
           onClick={() => setShowModal(true)}
           className="w-full"
-          color="blue"
+          color="orange"
         >
           Accept Quote
         </Button>

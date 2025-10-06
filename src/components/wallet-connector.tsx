@@ -61,28 +61,30 @@ const WalletConnectorInner = ({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-md bg-zinc-100 dark:bg-zinc-900 px-2 py-1">
-        <span className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {networkLabel}
-        </span>
-      </div>
-
+    <div className="flex items-center gap-2 flex-wrap">
       {bothConnected && (
-        <div className="inline-flex rounded-md bg-zinc-100 dark:bg-zinc-900 text-xs">
+        <div className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200 dark:border-zinc-800 min-w-fit">
           <button
             type="button"
             onClick={() => setActiveFamily("evm")}
-            className={`px-2 py-1 rounded-l-md ${activeFamily === "evm" ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-white" : "text-zinc-600 dark:text-zinc-400"}`}
+            className={`px-3 py-1.5 rounded-md transition-all duration-200 font-medium text-xs whitespace-nowrap ${
+              activeFamily === "evm"
+                ? "bg-white text-[#0052ff] dark:bg-zinc-800 dark:text-white shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
           >
-            Use EVM
+            Base
           </button>
           <button
             type="button"
             onClick={() => setActiveFamily("solana")}
-            className={`px-2 py-1 rounded-r-md ${activeFamily === "solana" ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-white" : "text-zinc-600 dark:text-zinc-400"}`}
+            className={`px-3 py-1.5 rounded-md transition-all duration-200 font-medium text-xs whitespace-nowrap ${
+              activeFamily === "solana"
+                ? "bg-gradient-to-r from-[#9945FF] to-[#14F195] text-white shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
           >
-            Use Solana
+            Solana
           </button>
         </div>
       )}
@@ -93,15 +95,18 @@ const WalletConnectorInner = ({
             <Button
               onClick={account ? openAccountModal : openConnectModal}
               color="orange"
-              className="!h-9"
+              className="!h-9 !px-3 !text-sm whitespace-nowrap"
             >
-              {account ? "Manage" : "Connect EVM"}
+              {account
+                ? account.displayName ||
+                  `${account.address.slice(0, 6)}...${account.address.slice(-4)}`
+                : "Connect Base"}
             </Button>
           )}
         </ConnectButton.Custom>
       ) : (
-        <div className="inline-flex ">
-          <WalletMultiButton className="!h-9 !py-0 !px-3 !text-sm !text-white !border !border-[#e67e00] hover:!brightness-110" />
+        <div className="inline-flex">
+          <WalletMultiButton className="!h-9 !py-0 !px-3 !text-sm !text-white !border !border-[#e67e00] hover:!brightness-110 !whitespace-nowrap" />
         </div>
       )}
     </div>

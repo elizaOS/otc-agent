@@ -2,7 +2,7 @@ import { Provider } from "@elizaos/core";
 
 export const tokenProvider: Provider = {
   name: "ELIZAOS",
-  description: "Information about ElizaOS and $ai16z",
+  description: "Information about $ElizaOS and $ai16z",
   position: 99,
   dynamic: true,
   get: async () => {

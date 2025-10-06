@@ -69,7 +69,13 @@ NEXT_PUBLIC_API_URL=http://localhost:2222
 NEXT_PUBLIC_PROJECT_ID=demo-project-id              # WalletConnect/Wagmi project id (dev ok)
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545           # Hardhat RPC
 NEXT_PUBLIC_OTC_ADDRESS=0x...                       # Filled by deploy scripts or API/devnet/ensure
+
+# Solana Configuration
 NEXT_PUBLIC_SOLANA_RPC=http://127.0.0.1:8899        # Solana validator RPC
+NEXT_PUBLIC_SOLANA_PROGRAM_ID=EPqRoaDur9VtTKABWK3QQArV2wCYKoN3Zu8kErhrtUxp  # Your deployed program ID
+NEXT_PUBLIC_SOLANA_DESK_OWNER=...                   # Wallet that owns the OTC desk (set after init)
+NEXT_PUBLIC_SOLANA_TOKEN_MINT=...                   # SPL token mint address (set after creation)
+NEXT_PUBLIC_SOLANA_USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v  # USDC mint (devnet default)
 
 # Agent/LLM providers (as needed by your plugins)
 GROQ_API_KEY=your-groq-api-key
@@ -168,11 +174,27 @@ anchor build
 anchor deploy                 # uses [provider] and [programs.*] from Anchor.toml
 ```
 
-Set app RPC for Solana:
+After deployment, initialize your OTC desk:
 
 ```bash
+# The program ID from anchor deploy
+export NEXT_PUBLIC_SOLANA_PROGRAM_ID=<your-program-id>
+
+# Your wallet address that will own the desk
+export NEXT_PUBLIC_SOLANA_DESK_OWNER=<your-wallet-pubkey>
+
+# Create and set your token mint address
+# (You can use an existing SPL token or create a new one)
+export NEXT_PUBLIC_SOLANA_TOKEN_MINT=<token-mint-address>
+
+# USDC mint (devnet: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
+export NEXT_PUBLIC_SOLANA_USDC_MINT=<usdc-mint-address>
+
+# Solana RPC endpoint
 export NEXT_PUBLIC_SOLANA_RPC=https://api.devnet.solana.com
 ```
+
+See `solana/otc-program/tests/otc.flows.ts` for examples of initializing a desk programmatically.
 
 ## Troubleshooting
 - App builds but APIs fail: ensure local chain is running and contracts are deployed (`rpc:start`, `rpc:deploy`).

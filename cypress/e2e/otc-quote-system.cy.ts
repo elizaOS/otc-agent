@@ -40,7 +40,6 @@ describe('Quote System Tests', () => {
         cy.get('[data-testid="quote-discount"]').should('exist').and('not.be.empty');
         cy.get('[data-testid="quote-lockup"]').should('exist').and('not.be.empty');
         cy.get('[data-testid="quote-currency"]').should('exist').and('not.be.empty');
-        cy.get('[data-testid="quote-expiry"]').should('exist').and('not.be.empty');
       });
     });
 
@@ -153,60 +152,6 @@ describe('Quote System Tests', () => {
     });
   });
 
-  describe('Quote Expiration', () => {
-    it('should show quote expiry countdown', () => {
-      cy.get('[data-testid="landing-textarea"]').type('Quote me{enter}');
-      
-      cy.get('[data-testid="quote-display"]', { timeout: 15000 }).within(() => {
-        cy.get('[data-testid="quote-expiry"]').should('be.visible');
-        
-        // Check countdown format
-        cy.get('[data-testid="quote-expiry"]')
-          .invoke('text')
-          .should('match', /\d+:\d+/); // MM:SS format
-      });
-    });
-
-    it('should update countdown timer', () => {
-      cy.get('[data-testid="landing-textarea"]').type('Give quote{enter}');
-      
-      cy.get('[data-testid="quote-display"]', { timeout: 15000 }).within(() => {
-        cy.get('[data-testid="quote-expiry"]').then(($expiry) => {
-          const initial = $expiry.text();
-          
-          cy.wait(2000);
-          
-          cy.get('[data-testid="quote-expiry"]')
-            .invoke('text')
-            .should('not.equal', initial);
-        });
-      });
-    });
-
-    it('should handle expired quotes', () => {
-      // Mock expired quote
-      cy.intercept('POST', '/api/eliza/**', {
-        body: {
-          text: `
-            <!-- XML_START -->
-            <quote>
-              <lockupMonths>5</lockupMonths>
-              <discountBps>500</discountBps>
-              <paymentCurrency>ETH</paymentCurrency>
-              <expiresAt>${Date.now() - 1000}</expiresAt>
-            </quote>
-            <!-- XML_END -->
-          `
-        }
-      });
-      
-      cy.get('[data-testid="landing-textarea"]').type('Old quote{enter}');
-      
-      cy.get('[data-testid="quote-display"]', { timeout: 15000 }).within(() => {
-        cy.contains(/expired|invalid/i).should('be.visible');
-      });
-    });
-  });
 
   describe('Quote Persistence', () => {
     it('should store quotes in backend', () => {

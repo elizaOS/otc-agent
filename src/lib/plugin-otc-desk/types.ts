@@ -14,7 +14,7 @@ export interface QuoteMemory {
   lockupMonths: number;
   lockupDays: number;
   paymentCurrency: PaymentCurrency;
-  priceUsdPerToken: number;
+  // Price is determined by Chainlink oracle on-chain, not stored in quote
   totalUsd: number;
   discountUsd: number;
   discountedUsd: number;
@@ -22,7 +22,6 @@ export interface QuoteMemory {
   status: QuoteStatus;
   signature: string;
   createdAt: number;
-  expiresAt: number;
   executedAt: number;
   rejectedAt: number;
   approvedAt: number;

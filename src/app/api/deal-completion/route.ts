@@ -32,12 +32,13 @@ export async function POST(request: NextRequest) {
 
     const quote = await quoteService.getQuoteByQuoteId(quoteId);
 
-    const pricePerToken = quote.priceUsdPerToken;
+    // Price was determined on-chain by Chainlink oracle
+    // Calculate from on-chain data if available, otherwise use quote values
     const discountBps = quote.discountBps;
     const tokenAmountNum = parseFloat(tokenAmountStr);
-    const totalUsd = tokenAmountNum * pricePerToken;
-    const discountUsd = totalUsd * (discountBps / 10000);
-    const discountedUsd = totalUsd - discountUsd;
+    const totalUsd = quote.totalUsd || 0; // Should be populated from on-chain data
+    const discountUsd = quote.discountUsd || (totalUsd * (discountBps / 10000));
+    const discountedUsd = quote.discountedUsd || (totalUsd - discountUsd);
 
     const updated = await quoteService.updateQuoteExecution(quoteId, {
       tokenAmount: tokenAmountStr,

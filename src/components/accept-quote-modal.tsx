@@ -68,7 +68,7 @@ export function AcceptQuoteModal({
   const chain = chainId === hardhat.id ? hardhat : base;
   const publicClient = useMemo(
     () => createPublicClient({ chain, transport: http(rpcUrl) }),
-    [chain, rpcUrl],
+    [chain, rpcUrl]
   );
 
   // Local UI state
@@ -77,16 +77,12 @@ export function AcceptQuoteModal({
       ONE_MILLION,
       Math.max(
         MIN_TOKENS,
-        initialQuote?.tokenAmount ? Number(initialQuote.tokenAmount) : 1000,
-      ),
-    ),
+        initialQuote?.tokenAmount ? Number(initialQuote.tokenAmount) : 1000
+      )
+    )
   );
   const [currency, setCurrency] = useState<"ETH" | "USDC" | "SOL">(
-    (initialQuote?.paymentCurrency as any) === "USDC"
-      ? "USDC"
-      : activeFamily === "solana"
-        ? "SOL"
-        : "ETH",
+    activeFamily === "solana" ? "SOL" : "ETH"
   );
   const [step, setStep] = useState<StepState>("amount");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,7 +92,7 @@ export function AcceptQuoteModal({
     string | undefined
   >(undefined);
   const [lastSignature, setLastSignature] = useState<`0x${string}` | undefined>(
-    undefined,
+    undefined
   );
   const isSolanaActive = activeFamily === "solana";
   const SOLANA_RPC =
@@ -105,15 +101,15 @@ export function AcceptQuoteModal({
   const SOLANA_PROGRAM_ID =
     (process.env.NEXT_PUBLIC_SOLANA_PROGRAM_ID as string | undefined) ||
     "EPqRoaDur9VtTKABWK3QQArV2wCYKoN3Zu8kErhrtUxp";
-  const SOLANA_DESK_OWNER = process.env.NEXT_PUBLIC_SOLANA_DESK_OWNER as
-    | string
-    | undefined;
-  const SOLANA_TOKEN_MINT = process.env.NEXT_PUBLIC_SOLANA_TOKEN_MINT as
-    | string
-    | undefined;
-  const SOLANA_USDC_MINT = process.env.NEXT_PUBLIC_SOLANA_USDC_MINT as
-    | string
-    | undefined;
+  const SOLANA_DESK_OWNER =
+    (process.env.NEXT_PUBLIC_SOLANA_DESK_OWNER as string | undefined) ||
+    "11111111111111111111111111111111"; // Placeholder - set after initializing Solana desk
+  const SOLANA_TOKEN_MINT =
+    (process.env.NEXT_PUBLIC_SOLANA_TOKEN_MINT as string | undefined) ||
+    "11111111111111111111111111111111"; // Placeholder - set after creating token mint
+  const SOLANA_USDC_MINT =
+    (process.env.NEXT_PUBLIC_SOLANA_USDC_MINT as string | undefined) ||
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC devnet mint
 
   // Wallet balances for display and MAX calculation
   const ethBalance = useBalance({ address });
@@ -124,21 +120,15 @@ export function AcceptQuoteModal({
       setStep("amount");
       setIsProcessing(false);
       setError(null);
-      setCurrency(
-        (initialQuote?.paymentCurrency as any) === "USDC"
-          ? "USDC"
-          : activeFamily === "solana"
-            ? "SOL"
-            : "ETH",
-      );
+      setCurrency(activeFamily === "solana" ? "SOL" : "ETH");
       setTokenAmount(
         Math.min(
           ONE_MILLION,
           Math.max(
             MIN_TOKENS,
-            initialQuote?.tokenAmount ? Number(initialQuote.tokenAmount) : 1000,
-          ),
-        ),
+            initialQuote?.tokenAmount ? Number(initialQuote.tokenAmount) : 1000
+          )
+        )
       );
     }
   }, [isOpen, initialQuote, activeFamily]);
@@ -187,7 +177,7 @@ export function AcceptQuoteModal({
     if (typeof initialQuote?.lockupMonths === "number")
       return Math.max(1, initialQuote.lockupMonths * 30);
     return Number(
-      defaultUnlockDelaySeconds ? defaultUnlockDelaySeconds / 86400n : 180n,
+      defaultUnlockDelaySeconds ? defaultUnlockDelaySeconds / 86400n : 180n
     );
   }, [
     initialQuote?.lockupDays,
@@ -245,35 +235,41 @@ export function AcceptQuoteModal({
 
   async function waitForApproval(offerId: bigint, timeoutMs = 60_000) {
     const start = Date.now();
-    console.log(`[waitForApproval] Starting poll for offer ${offerId}, timeout: ${timeoutMs}ms`);
-    
+    console.log(
+      `[waitForApproval] Starting poll for offer ${offerId}, timeout: ${timeoutMs}ms`
+    );
+
     // Poll every 2s until approved
     while (Date.now() - start < timeoutMs) {
       const elapsed = Date.now() - start;
-      console.log(`[waitForApproval] Checking offer ${offerId} (${Math.floor(elapsed / 1000)}s elapsed)`);
-      
+      console.log(
+        `[waitForApproval] Checking offer ${offerId} (${Math.floor(elapsed / 1000)}s elapsed)`
+      );
+
       const offer = await readOffer(offerId);
       console.log(`[waitForApproval] Offer state:`, {
         approved: offer?.approved,
         paid: offer?.paid,
         cancelled: offer?.cancelled,
       });
-      
+
       if (offer?.approved) {
-        console.log(`[waitForApproval] ✅ Offer approved after ${Math.floor(elapsed / 1000)}s`);
+        console.log(
+          `[waitForApproval] ✅ Offer approved after ${Math.floor(elapsed / 1000)}s`
+        );
         return offer;
       }
-      
+
       await wait(2000);
     }
-    
+
     console.error(`[waitForApproval] ❌ Timed out after ${timeoutMs}ms`);
     throw new Error("Offer approval timed out");
   }
 
   async function fulfillWithRetry(
     offerId: bigint,
-    computePayment: (offer: any) => { wei?: bigint; usdc?: bigint },
+    computePayment: (offer: any) => { wei?: bigint; usdc?: bigint }
   ) {
     const maxAttempts = 3;
     let attempt = 0;
@@ -325,9 +321,14 @@ export function AcceptQuoteModal({
       // Solana path
       if (isSolanaActive) {
         // Basic config checks
-        if (!SOLANA_DESK_OWNER || !SOLANA_TOKEN_MINT) {
+        if (
+          !SOLANA_DESK_OWNER ||
+          !SOLANA_TOKEN_MINT ||
+          SOLANA_DESK_OWNER === "11111111111111111111111111111111" ||
+          SOLANA_TOKEN_MINT === "11111111111111111111111111111111"
+        ) {
           throw new Error(
-            "Missing Solana configuration (DESK_OWNER or TOKEN_MINT).",
+            "Solana OTC desk not configured. Please set NEXT_PUBLIC_SOLANA_DESK_OWNER and NEXT_PUBLIC_SOLANA_TOKEN_MINT environment variables after initializing your Solana OTC desk."
           );
         }
 
@@ -342,21 +343,21 @@ export function AcceptQuoteModal({
           connection,
           // Anchor expects an object with signTransaction / signAllTransactions
           wallet,
-          { commitment: "confirmed" },
+          { commitment: "confirmed" }
         );
         const programId = new SolPubkey(SOLANA_PROGRAM_ID);
         const idl = await fetchSolanaIdl();
         const program = new (anchor as any).Program(
           idl as Idl,
           programId,
-          provider,
+          provider
         ) as any;
 
         // Derive PDAs
         const deskOwnerPk = new SolPubkey(SOLANA_DESK_OWNER);
         const [desk] = SolPubkey.findProgramAddressSync(
           [Buffer.from("desk"), deskOwnerPk.toBuffer()],
-          programId,
+          programId
         );
         const tokenMintPk = new SolPubkey(SOLANA_TOKEN_MINT);
         const usdcMintPk = SOLANA_USDC_MINT
@@ -365,7 +366,7 @@ export function AcceptQuoteModal({
         const deskTokenTreasury = await getAssociatedTokenAddress(
           tokenMintPk,
           desk,
-          true,
+          true
         );
         const deskUsdcTreasury = usdcMintPk
           ? await getAssociatedTokenAddress(usdcMintPk, desk, true)
@@ -373,19 +374,19 @@ export function AcceptQuoteModal({
 
         // Read nextOfferId from desk account
         const deskAccount: any = await (program.account as any).desk.fetch(
-          desk,
+          desk
         );
         const nextOfferId = new anchor.BN(deskAccount.nextOfferId.toString());
         const idBuf = Buffer.alloc(8);
         idBuf.writeBigUInt64LE(BigInt(nextOfferId.toString()));
         const [offer] = SolPubkey.findProgramAddressSync(
           [Buffer.from("offer"), desk.toBuffer(), idBuf],
-          programId,
+          programId
         );
 
         // Create offer on Solana
         const tokenAmountWei = new anchor.BN(
-          (BigInt(tokenAmount) * 10n ** 18n).toString(),
+          (BigInt(tokenAmount) * 10n ** 18n).toString()
         );
         const lockupSeconds = new anchor.BN(lockupDays * 24 * 60 * 60);
         const paymentCurrencySol = currency === "USDC" ? 1 : 0; // 0 SOL, 1 USDC
@@ -395,7 +396,7 @@ export function AcceptQuoteModal({
             tokenAmountWei,
             discountBps,
             paymentCurrencySol,
-            lockupSeconds,
+            lockupSeconds
           )
           .accountsStrict({
             desk,
@@ -438,7 +439,7 @@ export function AcceptQuoteModal({
           const payerUsdcAta = await getAssociatedTokenAddress(
             usdcMintPk,
             wallet.publicKey,
-            false,
+            false
           );
           await program.methods
             .fulfillOfferUsdc(nextOfferId)
@@ -451,7 +452,7 @@ export function AcceptQuoteModal({
               payer: wallet.publicKey,
               tokenProgram: new SolPubkey(
                 // spl-token program id
-                "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
               ),
               systemProgram: SolSystemProgram.programId,
             })
@@ -465,25 +466,43 @@ export function AcceptQuoteModal({
         return;
       }
 
-      // Persist beneficiary for the negotiated quote so the worker can match strictly
+      // Update quote with user's selected amount and currency before creating offer
+      // Price will be determined by Chainlink oracle on-chain, so we don't calculate it here
       try {
         if (initialQuote?.quoteId) {
+          console.log("[AcceptQuote] Updating quote with user selections:", {
+            quoteId: initialQuote.quoteId,
+            tokenAmount,
+            paymentCurrency: currency,
+            note: "Price will be determined by Chainlink oracle on-chain",
+          });
+
           await fetch("/api/quote/latest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               quoteId: initialQuote.quoteId,
               beneficiary: address,
+              tokenAmount: String(tokenAmount),
+              paymentCurrency: currency,
+              totalUsd: 0, // Will be calculated on-chain
+              discountUsd: 0, // Will be calculated on-chain
+              discountedUsd: 0, // Will be calculated on-chain
+              paymentAmount: "0", // Will be calculated on-chain
             }),
           });
+
+          console.log("[AcceptQuote] ✅ Quote updated with user selections");
         }
-      } catch {}
+      } catch (e) {
+        console.error("[AcceptQuote] Failed to update quote:", e);
+      }
 
       // Sign the terms for auditability
       const msg = `I agree to purchase ${tokenAmount} ElizaOS at ${(
         discountBps / 100
       ).toFixed(
-        2,
+        2
       )}% discount with ${lockupDays} days lockup, paying in ${currency}. Wallet: ${address}`;
       try {
         const sig = await signMessageAsync({
@@ -514,26 +533,35 @@ export function AcceptQuoteModal({
       console.log(`[AcceptQuote] Offer created: ${newOfferId}`);
 
       setStep("await_approval");
-      
+
       // Call approval API - it will block until approved and may also fulfill
-      console.log(`[AcceptQuote] Requesting approval for offer:`, newOfferId.toString());
+      console.log(
+        `[AcceptQuote] Requesting approval for offer:`,
+        newOfferId.toString()
+      );
       const approveRes = await fetch("/api/otc/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ offerId: newOfferId.toString() }),
       });
-      
+
       if (!approveRes.ok) {
         const errorText = await approveRes.text();
         throw new Error(`Approval failed: ${errorText}`);
       }
-      
+
       const approveData = await approveRes.json();
-      console.log(`[AcceptQuote] ✅ Offer approved:`, approveData.approvedTx || approveData.txHash);
+      console.log(
+        `[AcceptQuote] ✅ Offer approved:`,
+        approveData.approvedTx || approveData.txHash
+      );
 
       // If backend already fulfilled synchronously, skip payment step
       if (approveData.fulfillTx || approveData.fulfilled) {
-        console.log(`[AcceptQuote] ✅ Offer fulfilled by backend:`, approveData.fulfillTx);
+        console.log(
+          `[AcceptQuote] ✅ Offer fulfilled by backend:`,
+          approveData.fulfillTx
+        );
         setStep("complete");
         setIsProcessing(false);
         onComplete?.({ offerId: newOfferId, txHash: approveData.fulfillTx });
@@ -599,19 +627,19 @@ export function AcceptQuoteModal({
     }
   };
 
+  // Price will be determined by Chainlink oracle on-chain
+  // We use a placeholder for UI estimation only - actual price is fetched on-chain
   const estimatedUsd = useMemo(() => {
-    const pricePerToken = initialQuote?.pricePerToken || 0;
-    const discountedPerToken = pricePerToken * (1 - discountBps / 10000);
-    if (discountedPerToken > 0) return tokenAmount * discountedPerToken;
-    return tokenAmount * 0.05;
-  }, [initialQuote?.pricePerToken, discountBps, tokenAmount]);
+    // Cannot accurately estimate without on-chain oracle price
+    // This is just for UI display, actual cost will be determined at execution
+    return 0;
+  }, []);
 
   const estPerTokenUsd = useMemo(() => {
-    const pricePerToken = initialQuote?.pricePerToken || 0;
-    const discountedPerToken = pricePerToken * (1 - discountBps / 10000);
-    if (discountedPerToken > 0) return discountedPerToken;
-    return tokenAmount > 0 ? estimatedUsd / tokenAmount : 0.05;
-  }, [initialQuote?.pricePerToken, discountBps, estimatedUsd, tokenAmount]);
+    // Cannot accurately estimate without on-chain oracle price
+    // This is just for UI display, actual cost will be determined at execution
+    return 0;
+  }, []);
 
   const balanceDisplay = useMemo(() => {
     if (!isConnected) return "—";
@@ -648,49 +676,28 @@ export function AcceptQuoteModal({
     }
   };
 
-  // Validation: enforce min USD and contract max
+  // Validation: enforce token amount limits (USD check will happen on-chain)
   const validationError = useMemo(() => {
-    const minUsd = minUsdAmount ? Number(minUsdAmount) / 1e8 : 5;
-    if (estimatedUsd < minUsd) {
-      return `Order too small. Minimum is ${formatUsd(minUsd)}.`;
+    if (tokenAmount < MIN_TOKENS) {
+      return `Order too small. Minimum is ${MIN_TOKENS.toLocaleString()} tokens.`;
     }
     if (tokenAmount > contractMaxTokens) {
       return `Amount exceeds maximum of ${contractMaxTokens.toLocaleString()} tokens.`;
     }
     return null;
-  }, [estimatedUsd, minUsdAmount, tokenAmount, contractMaxTokens]);
+  }, [tokenAmount, contractMaxTokens]);
 
-  // Compute estimated payment in selected currency and flag insufficient funds
+  // Cannot estimate payment without on-chain oracle price
+  // Actual payment amount will be calculated when offer is created on-chain
   const estimatedPayment = useMemo(() => {
-    if (currency === "USDC")
-      return { usdc: estimatedUsd, eth: undefined } as const;
-    if (currency === "SOL") return { usdc: undefined, eth: undefined } as const;
-    const ethUsd = initialQuote?.ethPrice || 0;
-    if (ethUsd <= 0) return { usdc: undefined, eth: undefined } as const;
-    return { usdc: undefined, eth: estimatedUsd / ethUsd } as const;
-  }, [currency, estimatedUsd, initialQuote?.ethPrice]);
+    return { usdc: undefined, eth: undefined } as const;
+  }, []);
 
+  // Cannot check for insufficient funds without knowing the final price
+  // User will see error at transaction time if they don't have enough
   const insufficientFunds = useMemo(() => {
-    if (!isConnected) return false;
-    if (currency === "USDC") {
-      const bal = Number(usdcBalance.data?.formatted || 0);
-      return (
-        estimatedPayment.usdc !== undefined &&
-        estimatedPayment.usdc > bal + 1e-6
-      );
-    }
-    if (currency === "SOL") return false;
-    const balEth = Number(ethBalance.data?.formatted || 0);
-    return (
-      estimatedPayment.eth !== undefined && estimatedPayment.eth > balEth + 1e-9
-    );
-  }, [
-    isConnected,
-    currency,
-    usdcBalance.data?.formatted,
-    ethBalance.data?.formatted,
-    estimatedPayment,
-  ]);
+    return false;
+  }, []);
 
   return (
     <Dialog open={isOpen} onClose={onClose} data-testid="accept-quote-modal">
@@ -793,7 +800,7 @@ export function AcceptQuoteModal({
               <div className="text-zinc-500">Maturity date</div>
               <div className="text-lg font-semibold">
                 {new Date(
-                  Date.now() + lockupDays * 24 * 60 * 60 * 1000,
+                  Date.now() + lockupDays * 24 * 60 * 60 * 1000
                 ).toLocaleDateString(undefined, {
                   month: "2-digit",
                   day: "2-digit",
@@ -802,9 +809,9 @@ export function AcceptQuoteModal({
               </div>
             </div>
             <div>
-              <div className="text-zinc-500">Est. $ElizaOS</div>
-              <div className="text-lg font-semibold">
-                ${(tokenAmount > 0 ? estimatedUsd / tokenAmount : 0).toFixed(3)}
+              <div className="text-zinc-500">Price per Token</div>
+              <div className="text-lg font-semibold text-zinc-400">
+                On-chain
               </div>
             </div>
           </div>
@@ -877,7 +884,7 @@ export function AcceptQuoteModal({
               color="dark"
               className="bg-zinc-800 text-white border-zinc-700"
             >
-              Cancel
+              <div className="px-4 py-2">Cancel</div>
             </Button>
             <Button
               data-testid="confirm-amount-button"
@@ -888,7 +895,9 @@ export function AcceptQuoteModal({
                 Boolean(validationError) || insufficientFunds || isProcessing
               }
             >
-              {isSolanaActive ? "Buy Now on Solana" : "Buy Now on EVM"}
+              <div className="px-4 py-2">
+                {isSolanaActive ? "Buy Now" : "Buy Now"}
+              </div>
             </Button>
           </div>
         )}
