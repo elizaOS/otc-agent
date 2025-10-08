@@ -1,7 +1,7 @@
 "use client";
 
 import { useMultiWallet } from "@/components/multiwallet";
-import { BaseLogo, SolanaLogo } from "@/components/icons";
+import { BaseLogo, SolanaLogo } from "@/components/icons/index";
 import { useChainId } from "wagmi";
 import { base, baseSepolia, hardhat } from "wagmi/chains";
 

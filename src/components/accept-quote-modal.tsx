@@ -22,6 +22,7 @@ import type { Abi } from "viem";
 import { createPublicClient, http } from "viem";
 import { base, hardhat } from "viem/chains";
 import { useAccount, useBalance } from "wagmi";
+import { useTransactionErrorHandler } from "@/hooks/useTransactionErrorHandler";
 
 interface AcceptQuoteModalProps {
   isOpen: boolean;
@@ -98,6 +99,7 @@ export function AcceptQuoteModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requireApprover, setRequireApprover] = useState(false);
+  const { handleTransactionError } = useTransactionErrorHandler();
   const [contractValid, setContractValid] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_lastSignedMessage, setLastSignedMessage] = useState<
@@ -352,6 +354,18 @@ export function AcceptQuoteModal({
     setError(null);
     setIsProcessing(true);
     setStep("creating");
+
+    try {
+      await executeTransaction();
+    } catch (err) {
+      const errorMessage = handleTransactionError(err as Error);
+      setError(errorMessage);
+      setIsProcessing(false);
+      setStep("amount");
+    }
+  };
+
+  const executeTransaction = async () => {
 
     /**
      * TRANSACTION FLOW (Optimized UX - Backend Pays)

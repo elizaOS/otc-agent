@@ -10,7 +10,7 @@ async function addApprover() {
   
   const ownerData = JSON.parse(fs.readFileSync("./id.json", "utf8"));
   const owner = Keypair.fromSecretKey(Uint8Array.from(ownerData));
-  const desk = new PublicKey("GH3KXYmSDgpFf4GU4nNgF6To6RGe8PFwxUervuN61bYq");
+  const desk = new PublicKey("8X2wDShtcJ5mFrcsJPjK8tQCD16zBqzsUGwhSCM4ggkorvuN61bYq");
   
   console.log("Adding owner as approver...");
   console.log("  Owner:", owner.publicKey.toString());

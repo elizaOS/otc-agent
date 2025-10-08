@@ -1,6 +1,8 @@
 "use client";
 
 import { MultiWalletProvider } from "@/components/multiwallet";
+import { ChainResetMonitor } from "@/components/chain-reset-monitor";
+import { DevResetButton } from "@/components/dev-reset-button";
 import { APP_INFO } from "@/config/app";
 import { config } from "@/lib/wagmi-client";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
@@ -62,7 +64,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <ConnectionProvider endpoint={solanaEndpoint}>
                 <WalletProvider wallets={wallets} autoConnect>
                   <WalletModalProvider>
-                    <MultiWalletProvider>{children}</MultiWalletProvider>
+                    <MultiWalletProvider>
+                      <ChainResetMonitor />
+                      <DevResetButton />
+                      {children}
+                    </MultiWalletProvider>
                   </WalletModalProvider>
                 </WalletProvider>
               </ConnectionProvider>

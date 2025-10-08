@@ -213,9 +213,20 @@ export async function POST(request: NextRequest) {
 
     // VALIDATE before saving
     if (!tokenAmountStr || tokenAmountStr === "0") {
+      console.warn(`[DealCompletion] tokenAmount is ${tokenAmountStr} - quote: ${quoteId}`);
+      // For old quotes, skip validation and just return current state
+      if (quote.status === "executed") {
+        console.log("[DealCompletion] Quote already executed, returning current state");
+        return NextResponse.json({ success: true, quote });
+      }
       throw new Error(`CRITICAL: tokenAmount is ${tokenAmountStr} - must be > 0`);
     }
     if (totalUsd === 0 && chainType === "solana") {
+      console.warn(`[DealCompletion] Solana deal has $0 value - quote: ${quoteId}`);
+      if (quote.status === "executed") {
+        console.log("[DealCompletion] Quote already executed, returning current state");
+        return NextResponse.json({ success: true, quote });
+      }
       throw new Error("CRITICAL: Solana deal has $0 value");
     }
     
@@ -251,10 +262,20 @@ export async function POST(request: NextRequest) {
     (updated as any).chain = chainType === "solana" ? "solana" : "evm";
     await agentRuntime.runtime.setCache(`quote:${quoteId}`, updated);
     
-    // VERIFY quote is in entity's list
+    // VERIFY quote is in entity's list, and fix index if missing
     const entityQuotes = await agentRuntime.runtime.getCache<string[]>(`entity_quotes:${updated.entityId}`) || [];
     if (!entityQuotes.includes(quoteId)) {
-      throw new Error(`CRITICAL: Quote ${quoteId} not in entity ${updated.entityId} list`);
+      console.warn(`[Deal Completion] Quote ${quoteId} not in entity ${updated.entityId} list - fixing index`);
+      entityQuotes.push(quoteId);
+      await agentRuntime.runtime.setCache(`entity_quotes:${updated.entityId}`, entityQuotes);
+      
+      // Also ensure it's in the all_quotes index
+      const allQuotes = await agentRuntime.runtime.getCache<string[]>("all_quotes") || [];
+      if (!allQuotes.includes(quoteId)) {
+        allQuotes.push(quoteId);
+        await agentRuntime.runtime.setCache("all_quotes", allQuotes);
+      }
+      console.log(`[Deal Completion] ✅ Fixed indexes for quote ${quoteId}`);
     }
     
     console.log("[Deal Completion] ✅ VERIFIED and completed:", {

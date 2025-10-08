@@ -45,7 +45,16 @@ Import test account (has 10k ETH):
 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-Nonce errors: Reset account in MetaMask settings or restart Hardhat with `bun run dev`
+### Chain Reset Handling (NEW!)
+
+When you reset the local chain, the app now automatically detects and handles nonce errors:
+
+- **Automatic Detection**: Shows a toast notification when chain reset is detected
+- **One-Click Recovery**: "Reset Wallet" button in error messages
+- **Dev Reset Button**: Fixed 🔧 button in bottom-right (development only)
+- **Smart Error Handling**: All transaction errors are caught with helpful recovery options
+
+No more manual MetaMask resets needed! See [`docs/CHAIN_RESET_HANDLING.md`](./docs/CHAIN_RESET_HANDLING.md) for details.
 
 ## Environment
 

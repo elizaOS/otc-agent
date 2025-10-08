@@ -3,7 +3,7 @@
 import { Button } from "@/components/button";
 import { useMultiWallet } from "@/components/multiwallet";
 import { NetworkConnectButton } from "@/components/network-connect";
-import { BaseLogo } from "@/components/icons";
+import { BaseLogo } from "@/components/icons/index";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";

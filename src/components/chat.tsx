@@ -560,6 +560,41 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     setShowClearChatModal(false);
   }, [entityId, createNewRoom]);
 
+  const handleDealComplete = useCallback(async () => {
+    console.log("[Chat] Deal completed, resetting chat and creating new room");
+    
+    // DO NOT close the modal - let it show the success state and handle its own redirect
+    // The modal will redirect to /deal/[id] page after 2 seconds
+    
+    // Reset chat and create new room in the background
+    if (!entityId) {
+      console.warn("[Chat] No entityId during deal completion - cannot reset chat");
+      return;
+    }
+
+    // Clear local storage for this wallet
+    localStorage.removeItem(`otc-desk-room-${entityId}`);
+
+    // Create a new room
+    const newRoomId = await createNewRoom();
+    if (!newRoomId) {
+      console.error("[Chat] Failed to create new room after deal completion - user will need to refresh");
+      // Still clear the old state even if new room creation failed
+      setMessages([]);
+      setCurrentQuote(null);
+      previousQuoteIdRef.current = null;
+      setRoomId(null);
+      return;
+    }
+
+    // Clear messages and reset state - this prepares a fresh chat for when user returns
+    setMessages([]);
+    setCurrentQuote(null);
+    previousQuoteIdRef.current = null;
+    setRoomId(newRoomId);
+    console.log("[Chat] Deal complete - created new room:", newRoomId, "- User will be redirected to deal page");
+  }, [entityId, createNewRoom]);
+
   return (
     <>
       <ChatBody
@@ -584,6 +619,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         isOpen={showAcceptModal}
         onClose={() => setShowAcceptModal(false)}
         initialQuote={currentQuote}
+        onComplete={handleDealComplete}
       />
 
       {/* Clear Chat Confirmation Modal */}
@@ -810,9 +846,9 @@ function ChatBody({
           setShowConnectOverlay(false);
         }}
       >
-        <div className="relative p-0">
-          <div className="flex flex-col items-center justify-center w-[min(640px,90vw)]">
-            <div className="w-full rounded-2xl overflow-hidden bg-zinc-50 dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-800 shadow-2xl">
+        <div className="relative p-0 mx-auto">
+          <div className="flex flex-col items-center justify-center w-[min(640px,90vw)] mx-auto">
+            <div className="w-full rounded-2xl overflow-hidden bg-zinc-50 dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-800 shadow-2xl mx-auto">
               <div className="relative w-full">
                 <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-zinc-900 to-zinc-800">
                   <div

@@ -1,6 +1,6 @@
 {
   "network": "hardhat",
-  "timestamp": "2025-10-08T04:14:33.409Z",
+  "timestamp": "2025-10-08T05:07:08.448Z",
   "contracts": {
     "elizaToken": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     "usdcToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -12,9 +12,9 @@
     "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "agent": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     "approver": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    "testWallet": "0xBdef0e826640a8b0FF086f62Ba3c2f9E72CAC198"
+    "testWallet": "0xEC707C284516EEa98fd68dC8c1FcC146664AfAA2"
   },
-  "testWalletPrivateKey": "0x7e5cfb6ac521516eec58da4a6c15d538bd0793f3cf1f2d2adfb40fbfda946041",
+  "testWalletPrivateKey": "0xca1520ab49749f3025e66f02f0fa77735a41d6eedb5b0ee65f8ee39d6ca590b8",
   "configuration": {
     "elizaPrice": "$0.05",
     "ethPrice": "$3500",

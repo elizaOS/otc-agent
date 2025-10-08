@@ -25,7 +25,6 @@ interface DealCompletionProps {
 }
 
 export function DealCompletion({ quote }: DealCompletionProps) {
-  const [shareCount, setShareCount] = useState(0);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [posted, setPosted] = useState(false);
 
@@ -52,6 +51,19 @@ export function DealCompletion({ quote }: DealCompletionProps) {
   }, [posted]);
 
   const recordDealCompletion = async () => {
+    // Skip POST if quote is already executed or has no data
+    // This prevents errors when viewing old deals with zero values
+    if (
+      quote.status === "executed" ||
+      !quote.tokenAmount ||
+      quote.tokenAmount === "0"
+    ) {
+      console.log(
+        "[DealCompletion] Skipping POST - quote already executed or has no data"
+      );
+      return;
+    }
+
     const response = await fetch("/api/deal-completion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,13 +73,18 @@ export function DealCompletion({ quote }: DealCompletionProps) {
         tokenAmount: quote.tokenAmount,
         paymentCurrency: quote.paymentCurrency,
         transactionHash: quote.transactionHash || "pending",
-        blockNumber: undefined, // Add if available
-        offerId: undefined, // Add if available
+        blockNumber: undefined,
+        offerId: quote.offerId || undefined,
+        chain: quote.chain || undefined,
       }),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to record deal completion");
+      console.error(
+        "[DealCompletion] Failed to record:",
+        await response.text()
+      );
+      // Don't throw - this is not critical, just logging
     }
   };
 
@@ -123,12 +140,10 @@ export function DealCompletion({ quote }: DealCompletionProps) {
         platform: "twitter",
       }),
     });
-    
+
     if (!response.ok) {
       throw new Error("Failed to track share");
     }
-    
-    setShareCount(shareCount + 1);
   };
 
   const downloadImage = async () => {
@@ -138,7 +153,7 @@ export function DealCompletion({ quote }: DealCompletionProps) {
       lockupMonths: quote.lockupMonths,
       paymentCurrency: quote.paymentCurrency as "ETH" | "USDC",
     });
-    
+
     const a = document.createElement("a");
     a.href = dataUrl;
     a.download = `eliza-deal-${quote.quoteId}.jpg`;
@@ -171,7 +186,9 @@ export function DealCompletion({ quote }: DealCompletionProps) {
           <h1 className="text-4xl font-bold text-white mb-2">
             Deal Executed Successfully!
           </h1>
-          <p className="text-zinc-400">You will receive your tokens after the lockup period</p>
+          <p className="text-zinc-400">
+            You will receive your tokens after the lockup period
+          </p>
           {quote.transactionHash && (
             <a
               href={`https://basescan.org/tx/${quote.transactionHash}`}
@@ -201,7 +218,11 @@ export function DealCompletion({ quote }: DealCompletionProps) {
                 className="ml-auto flex items-center gap-2 !px-4 !py-2"
                 color="blue"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
                 </svg>
                 Share
@@ -226,12 +247,6 @@ export function DealCompletion({ quote }: DealCompletionProps) {
                 </svg>
                 Download
               </Button>
-
-              {shareCount > 0 && (
-                <span className="text-zinc-400 text-sm self-center ml-2">
-                  Shared {shareCount} time{shareCount > 1 ? "s" : ""}
-                </span>
-              )}
             </div>
           </div>
         )}
@@ -250,7 +265,8 @@ export function DealCompletion({ quote }: DealCompletionProps) {
                   Instant Savings
                 </h3>
                 <p className="text-3xl font-bold text-white">
-                  ${quote.discountUsd > 0 ? quote.discountUsd.toFixed(2) : "N/A"}
+                  $
+                  {quote.discountUsd > 0 ? quote.discountUsd.toFixed(2) : "N/A"}
                 </p>
                 <p className="text-sm text-zinc-400 mt-1">
                   {(quote.discountBps / 100).toFixed(2)}% below market price
@@ -336,7 +352,8 @@ export function DealCompletion({ quote }: DealCompletionProps) {
               <div className="text-right">
                 <p className="text-zinc-400 text-sm">Payment Method</p>
                 <p className="text-xl font-semibold text-white">
-                  {quote.paymentAmount} {quote.chain === "solana" ? "SOL" : quote.paymentCurrency}
+                  {quote.paymentAmount}{" "}
+                  {quote.chain === "solana" ? "SOL" : quote.paymentCurrency}
                 </p>
               </div>
             </div>
