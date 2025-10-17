@@ -1,57 +1,21 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import type {
-  OTCConsignment,
-  Token,
-  TokenMarketData,
-} from "@/services/database";
+import type { OTCConsignment } from "@/services/database";
+import { useTokenCache, useMarketDataRefresh } from "@/hooks/useTokenCache";
 
 interface ConsignmentCardProps {
   consignment: OTCConsignment;
 }
 
-const PRICE_REFRESH_INTERVAL = 30000; // 30 seconds
-
 export function ConsignmentCard({ consignment }: ConsignmentCardProps) {
   const router = useRouter();
-  const [token, setToken] = useState<Token | null>(null);
-  const [marketData, setMarketData] = useState<TokenMarketData | null>(null);
-  const fetchedTokenId = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Only fetch once for this tokenId
-    if (fetchedTokenId.current === consignment.tokenId) return;
-    
-    fetchedTokenId.current = consignment.tokenId;
-    
-    async function loadTokenData() {
-      const response = await fetch(`/api/tokens/${consignment.tokenId}`);
-      const data = await response.json();
-      if (data.success) {
-        setToken(data.token);
-        setMarketData(data.marketData);
-      }
-    }
-
-    async function refreshMarketData() {
-      if (!token) return;
-      
-      const response = await fetch(`/api/market-data/${consignment.tokenId}`);
-      const data = await response.json();
-      
-      if (data.success && data.marketData) {
-        setMarketData(data.marketData);
-      }
-    }
-    
-    loadTokenData();
-
-    const interval = setInterval(refreshMarketData, PRICE_REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [consignment.tokenId, token]);
+  const { token, marketData: initialMarketData } = useTokenCache(
+    consignment.tokenId,
+  );
+  const refreshedMarketData = useMarketDataRefresh(consignment.tokenId, token);
+  const marketData = refreshedMarketData || initialMarketData;
 
   if (!token) return null;
 
@@ -83,8 +47,12 @@ export function ConsignmentCard({ consignment }: ConsignmentCardProps) {
             />
           )}
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold truncate">{token.symbol}</h3>
-            <p className="text-xs sm:text-sm text-zinc-500 truncate">{token.name}</p>
+            <h3 className="text-base sm:text-lg font-semibold truncate">
+              {token.symbol}
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-500 truncate">
+              {token.name}
+            </p>
           </div>
         </div>
         <div className="text-right flex-shrink-0">
@@ -100,14 +68,18 @@ export function ConsignmentCard({ consignment }: ConsignmentCardProps) {
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between gap-2">
-          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">Available:</span>
+          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
+            Available:
+          </span>
           <span className="font-medium text-xs sm:text-sm text-right">
             {formatAmount(consignment.remainingAmount)} {token.symbol}
           </span>
         </div>
 
         <div className="flex justify-between gap-2">
-          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">Discount:</span>
+          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
+            Discount:
+          </span>
           <span className="font-medium text-xs sm:text-sm text-right">
             {consignment.isNegotiable
               ? `${consignment.minDiscountBps / 100}% - ${consignment.maxDiscountBps / 100}%`
@@ -116,7 +88,9 @@ export function ConsignmentCard({ consignment }: ConsignmentCardProps) {
         </div>
 
         <div className="flex justify-between gap-2">
-          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">Lockup:</span>
+          <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
+            Lockup:
+          </span>
           <span className="font-medium text-xs sm:text-sm text-right">
             {consignment.isNegotiable
               ? `${consignment.minLockupDays}d - ${consignment.maxLockupDays}d`

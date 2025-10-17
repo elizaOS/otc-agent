@@ -85,6 +85,38 @@ export function Header() {
       >
         How It Works
       </Link>
+      {mobile && (
+        <>
+          <Link
+            href="/consign"
+            className={clsx(
+              "-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-900",
+              pathname === "/consign"
+                ? "text-zinc-900 dark:text-white"
+                : "text-zinc-600 dark:text-zinc-400",
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-current={pathname === "/consign" ? "page" : undefined}
+          >
+            Create Listing
+          </Link>
+          <div className="my-2 border-t border-zinc-200 dark:border-zinc-800" />
+          <Link
+            href="/terms"
+            className="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Terms of Service
+          </Link>
+          <Link
+            href="/privacy"
+            className="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Privacy Policy
+          </Link>
+        </>
+      )}
     </>
   );
 

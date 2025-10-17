@@ -76,6 +76,3 @@ export function getChainFromId(chainId: string): Chain | null {
   }
   return null;
 }
-
-
-

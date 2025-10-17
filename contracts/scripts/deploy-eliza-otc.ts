@@ -103,6 +103,7 @@ async function main() {
   
   // Create a negotiable consignment for the elizaOS token
   const fundAmount = ethers.parseEther("10000000"); // 10M elizaOS
+  const gasDeposit = ethers.parseEther("0.001"); // Required gas deposit
   await elizaToken.approve(otcAddress, fundAmount);
   await deal.createConsignment(
     elizaTokenId,
@@ -116,7 +117,8 @@ async function main() {
     true, // fractionalized
     false, // not private
     2000, // 20% max price volatility
-    86400 * 7 // 7 days to execute
+    86400 * 7, // 7 days to execute
+    { value: gasDeposit } // Include gas deposit
   );
   console.log("  ✓ Created negotiable consignment with 10M elizaOS tokens");
 

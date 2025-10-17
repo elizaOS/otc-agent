@@ -4,21 +4,43 @@ import Card from "@/components/Card";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMultiWallet } from "@/components/multiwallet";
-import { useCallback, useRef } from "react";
-import { NetworkConnectButton } from "@/components/network-connect";
+import { useCallback, useState } from "react";
+import { Dialog } from "@/components/dialog";
+import { BaseLogo, SolanaLogo } from "@/components/icons/index";
 
 export default function HowItWorksContent() {
   const router = useRouter();
-  const { isConnected } = useMultiWallet();
-  const connectButtonRef = useRef<HTMLButtonElement>(null);
+  const {
+    isConnected,
+    setActiveFamily,
+    login,
+    connectSolanaWallet,
+    isPhantomInstalled,
+  } = useMultiWallet();
+  const [showNetworkDialog, setShowNetworkDialog] = useState(false);
 
   const handleConnectWallet = useCallback(() => {
     if (!isConnected) {
-      // Trigger the NetworkConnectButton click
-      connectButtonRef.current?.click();
+      setShowNetworkDialog(true);
     }
     // If connected, do nothing
   }, [isConnected]);
+
+  const handleConnectEvm = useCallback(() => {
+    setShowNetworkDialog(false);
+    setActiveFamily("evm");
+    login();
+  }, [setActiveFamily, login]);
+
+  const handleConnectSolana = useCallback(() => {
+    if (!isPhantomInstalled) {
+      alert("Please install Phantom or Solflare wallet to use Solana.");
+      return;
+    }
+    setShowNetworkDialog(false);
+    setActiveFamily("solana");
+    connectSolanaWallet();
+  }, [isPhantomInstalled, setActiveFamily, connectSolanaWallet]);
 
   const handleOpenTradingDesk = useCallback(() => {
     router.push("/");
@@ -29,7 +51,7 @@ export default function HowItWorksContent() {
   }, [router]);
 
   return (
-    <div className="relative flex flex-col px-4 sm:px-6 py-10 h-screen">
+    <div className="relative flex flex-col px-4 sm:px-6 py-10 min-h-screen">
       {/* Background with gradient overlay */}
       <div className="absolute inset-0">
         {/* Black background */}
@@ -60,7 +82,6 @@ export default function HowItWorksContent() {
       {/* Content */}
       <div className="z-10 flex flex-col items-start justify-center h-full">
         <div className="flex items-center mb-10">
-          {/* Temporary replacement text */}
           <Image
             src="/how-it-works/text.svg"
             alt="How it works text"
@@ -73,7 +94,6 @@ export default function HowItWorksContent() {
 
         {/* New heading text */}
         <h1 className="text-white font-bold text-start text-3xl max-w-4xl leading-tight">
-          Buy discounted ELIZA with a time-based lockup.{" "}
           <span className="text-[#F75B1E]">
             {" "}
             Simple, transparent, on-chain.
@@ -98,9 +118,8 @@ export default function HowItWorksContent() {
           <Card
             number="3"
             title="Buy and hold"
-            description="Complete payment in ETH or USDC. Your ELIZA unlocks after the selected lockup."
+            description="Complete payment in ETH or USDC. Your tokens are available after the lockup period ends."
             button="View My Deals"
-            note={true}
             onClick={handleViewDeals}
           />
         </div>
@@ -113,12 +132,42 @@ export default function HowItWorksContent() {
         }}
       />
 
-      {/* Hidden NetworkConnectButton for unified wallet connection flow */}
-      <div className="hidden">
-        <NetworkConnectButton>
-          <button ref={connectButtonRef} />
-        </NetworkConnectButton>
-      </div>
+      {/* Network selection dialog */}
+      <Dialog open={showNetworkDialog} onClose={setShowNetworkDialog} size="lg">
+        <div className="p-6">
+          <h3 className="text-center text-xl font-semibold mb-4">
+            Choose a network
+          </h3>
+          <div className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-6 border border-zinc-800/50 shadow-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={handleConnectEvm}
+                className="group rounded-xl p-8 sm:p-10 text-center transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 focus:ring-offset-zinc-900"
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <BaseLogo className="w-10 h-10 sm:w-12 sm:h-12" />
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold">Base</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={handleConnectSolana}
+                className="group rounded-xl p-8 sm:p-10 text-center transition-all duration-200 cursor-pointer text-white bg-gradient-to-br from-[#9945FF] via-[#8752F3] to-[#14F195] border-2 border-[#9945FF]/50 hover:border-[#14F195]/50 hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#9945FF] focus:ring-offset-2 focus:ring-offset-zinc-900"
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <SolanaLogo className="w-10 h-10 sm:w-12 sm:h-12" />
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold">Solana</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

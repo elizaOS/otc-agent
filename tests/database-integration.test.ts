@@ -41,7 +41,7 @@ describe('Database Reconciliation (Mock Simulation)', () => {
     console.log('  ✅ Status comparison logic found');
 
     // Verify it updates database
-    expect(reconCode).toContain('QuoteService.updateQuoteExecution');
+    expect(reconCode).toContain('QuoteDB.updateQuoteStatus');
     console.log('  ✅ Database update logic found');
 
     console.log('\n  Logic Flow Verified:');
@@ -109,25 +109,17 @@ describe('Full System Architecture', () => {
     expect(quoteCode).not.toContain('createOTCOfferOnChain'); // No mocks!
     console.log('  ✅ Quote action (no mocks)');
 
-    // Accept action
-    const acceptPath = path.join(
-      process.cwd(),
-      'src/lib/plugin-otc-desk/actions/acceptQuote.ts'
-    );
-    const acceptCode = fs.readFileSync(acceptPath, 'utf8');
-    expect(acceptCode).not.toContain('fake');
-    expect(acceptCode).not.toContain('Math.random');
-    console.log('  ✅ Accept action (no mocks)');
-
-    // Frontend modal
+    // Accept flow (frontend modal + backend API)
     const modalPath = path.join(
       process.cwd(),
       'src/components/accept-quote-modal.tsx'
     );
     const modalCode = fs.readFileSync(modalPath, 'utf8');
-    expect(modalCode).toContain('createOffer');
-    expect(modalCode).toContain('fulfillOffer');
-    console.log('  ✅ Frontend uses real contract calls');
+    expect(modalCode).not.toContain('fake');
+    expect(modalCode).not.toContain('Math.random');
+    expect(modalCode).toContain('createOffer'); // Real contract call
+    expect(modalCode).toContain('fulfillOffer'); // Real contract call
+    console.log('  ✅ Accept modal verified (real contract calls, no mocks)');
 
     // useOTC hook
     const hookPath = path.join(

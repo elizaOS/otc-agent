@@ -11,7 +11,7 @@ import { BaseLogo, SolanaLogo } from "@/components/icons/index";
  * Shows modal to choose Base or Solana network
  * - Base: Uses Privy for EVM wallet connection (MetaMask, Coinbase, etc.)
  * - Solana: Uses Solana wallet-adapter for native Solana wallets (Phantom, Solflare, etc.)
- * 
+ *
  * IMPORTANT: If used inside another modal, provide onBeforeOpen callback
  * to close parent modal first (prevents modal nesting issues)
  */
@@ -32,39 +32,28 @@ export function NetworkConnectButton({
     if (onBeforeOpen) {
       await onBeforeOpen();
       // Small delay to let parent modal close animation complete
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
     setOpen(true);
   }, [onBeforeOpen]);
 
   const onChooseEvm = useCallback(() => {
+    console.log("[NetworkConnect] EVM chosen, setting family and connecting...");
     setActiveFamily("evm");
     setOpen(false);
-    // Small delay to ensure modal closes smoothly before Privy opens
-    setTimeout(() => {
-      login();
-    }, 100);
+    login();
   }, [login, setActiveFamily]);
 
   const onChooseSolana = useCallback(() => {
-    console.log("[NetworkConnect] Solana chosen, closing modal and connecting...");
+    console.log("[NetworkConnect] Solana chosen, setting family and connecting...");
+    setActiveFamily("solana");
     setOpen(false);
-    // Small delay to ensure modal closes smoothly before Solana wallet modal opens
-    setTimeout(() => {
-      console.log("[NetworkConnect] Setting activeFamily to solana");
-      setActiveFamily("solana");
-      console.log("[NetworkConnect] Calling connectSolanaWallet");
-      connectSolanaWallet();
-    }, 100);
+    connectSolanaWallet();
   }, [setActiveFamily, connectSolanaWallet]);
 
   return (
     <>
-      <Button
-        onClick={handleButtonClick}
-        color="orange"
-        className={className}
-      >
+      <Button onClick={handleButtonClick} color="orange" className={className}>
         {children ?? "Connect"}
       </Button>
       <Dialog open={open} onClose={setOpen} size="lg">

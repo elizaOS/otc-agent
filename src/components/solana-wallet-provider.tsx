@@ -31,10 +31,7 @@ export function SolanaWalletProvider({
 
   // Configure wallet adapters
   const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
-    ],
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
     [network],
   );
 
@@ -53,4 +50,3 @@ export function SolanaWalletProvider({
     </ConnectionProvider>
   );
 }
-

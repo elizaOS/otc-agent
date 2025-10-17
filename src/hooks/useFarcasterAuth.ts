@@ -64,7 +64,14 @@ export function useFarcasterAuth() {
     };
 
     performAutoLogin();
-  }, [ready, authenticated, isFarcasterContext, isLoggingIn, initLoginToMiniApp, loginToMiniApp]);
+  }, [
+    ready,
+    authenticated,
+    isFarcasterContext,
+    isLoggingIn,
+    initLoginToMiniApp,
+    loginToMiniApp,
+  ]);
 
   return {
     isSDKLoaded,

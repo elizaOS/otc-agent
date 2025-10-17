@@ -68,7 +68,7 @@ export function useTransactionErrorHandler() {
     if (address) {
       await disconnect();
     }
-    
+
     // Logout from Privy (handles all wallet types)
     await logout();
 
@@ -77,7 +77,7 @@ export function useTransactionErrorHandler() {
       localStorage.removeItem("wagmi.store");
       localStorage.removeItem("wagmi.cache");
       localStorage.removeItem("wagmi.recentConnectorId");
-      
+
       // Clear Privy cache
       localStorage.removeItem("privy:token");
       localStorage.removeItem("privy:refresh_token");

@@ -96,10 +96,6 @@ export const styles = {
       "text-white [--btn-hover-overlay:var(--color-white)]/10 [--btn-bg:var(--color-red-600)] [--btn-border:var(--color-red-700)]/90",
       "[--btn-icon:var(--color-red-300)] data-active:[--btn-icon:var(--color-red-200)] data-hover:[--btn-icon:var(--color-red-200)]",
     ],
-    orange: [
-      "text-white [--btn-hover-overlay:var(--color-white)]/10 [--btn-bg:#ff8c00] [--btn-border:#e67e00]/90",
-      "[--btn-icon:var(--color-orange-300)] data-active:[--btn-icon:var(--color-orange-200)] data-hover:[--btn-icon:var(--color-orange-200)]",
-    ],
     amber: [
       "text-amber-950 [--btn-hover-overlay:var(--color-white)]/25 [--btn-bg:var(--color-amber-400)] [--btn-border:var(--color-amber-500)]/80",
       "[--btn-icon:var(--color-amber-600)]",
@@ -180,10 +176,10 @@ export function Button({
   const classes = clsx(
     styles.base,
     outline
-    ? styles.outline
-    : plain
-    ? styles.plain
-    : clsx(styles.solid, styles.colors[color ?? "dark/zinc"]),
+      ? styles.outline
+      : plain
+        ? styles.plain
+        : clsx(styles.solid, styles.colors[color ?? "dark/zinc"]),
     className,
   );
 

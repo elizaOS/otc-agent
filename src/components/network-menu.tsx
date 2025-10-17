@@ -15,33 +15,29 @@ export function NetworkMenu() {
     isPhantomInstalled,
     login,
     connectSolanaWallet,
-    disconnect,
   } = useMultiWallet();
 
   const handleNetworkSwitch = async (family: "evm" | "solana") => {
     // Don't switch if already on this network
     if (family === activeFamily) return;
-    
-    // Disconnect current wallet before switching
-    await disconnect();
-    
-    // Set new active family
+
+    console.log(`[NetworkMenu] Switching from ${activeFamily} to ${family}`);
+
+    // Set new active family first
     setActiveFamily(family);
-    
-    // Wait a moment for disconnect to complete, then connect to new network
-    setTimeout(() => {
-      if (family === "solana") {
-        if (!isPhantomInstalled) {
-          toast.info("Solana Wallet Needed", {
-            description: "Install Phantom or Solflare to use Solana.",
-            duration: 6000,
-          });
-        }
-        connectSolanaWallet();
-      } else {
-        login(); // Privy for Base
+
+    // Then trigger connection for the new network
+    if (family === "solana") {
+      if (!isPhantomInstalled) {
+        toast.info("Solana Wallet Needed", {
+          description: "Install Phantom or Solflare to use Solana.",
+          duration: 6000,
+        });
       }
-    }, 300);
+      connectSolanaWallet();
+    } else {
+      login(); // Privy for Base
+    }
   };
 
   return (

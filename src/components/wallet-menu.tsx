@@ -22,18 +22,20 @@ export function WalletMenu() {
     login,
     connectWallet,
     connectSolanaWallet,
+    switchSolanaWallet,
     disconnect,
   } = useMultiWallet();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentAddress = activeFamily === "solana" ? solanaPublicKey : evmAddress;
+  const currentAddress =
+    activeFamily === "solana" ? solanaPublicKey : evmAddress;
   const displayAddress = currentAddress
     ? `${currentAddress.slice(0, 6)}...${currentAddress.slice(-4)}`
     : "Loading...";
   const fullAddress = currentAddress || "";
-  
+
   // Debug logging
   useEffect(() => {
     console.log("[WalletMenu] Rendering with:", {
@@ -46,7 +48,16 @@ export function WalletMenu() {
       displayAddress,
       networkLabel,
     });
-  }, [activeFamily, evmAddress, solanaPublicKey, evmConnected, solanaConnected, currentAddress, displayAddress, networkLabel]);
+  }, [
+    activeFamily,
+    evmAddress,
+    solanaPublicKey,
+    evmConnected,
+    solanaConnected,
+    currentAddress,
+    displayAddress,
+    networkLabel,
+  ]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,7 +72,8 @@ export function WalletMenu() {
 
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
 
@@ -74,28 +86,24 @@ export function WalletMenu() {
   const handleSwitchNetwork = async () => {
     setIsOpen(false);
     const targetFamily = activeFamily === "solana" ? "evm" : "solana";
-    
-    // CRITICAL: Disconnect current wallet before switching
-    await disconnect();
-    
-    // Wait a moment for disconnect to complete, then connect to new network
-    setTimeout(() => {
-      // Set active family AFTER disconnect completes
-      setActiveFamily(targetFamily);
-      
-      // Open appropriate connection modal for target network
-      if (targetFamily === "evm") {
-        login(); // Privy modal for Base
-      } else if (targetFamily === "solana") {
-        connectSolanaWallet(); // Solana wallet-adapter modal
-      }
-    }, 500);
+
+    console.log(`[WalletMenu] Switching from ${activeFamily} to ${targetFamily}`);
+
+    // Set active family first
+    setActiveFamily(targetFamily);
+
+    // Then open appropriate connection modal for target network
+    if (targetFamily === "evm") {
+      login(); // Privy modal for Base
+    } else if (targetFamily === "solana") {
+      connectSolanaWallet(); // Solana wallet-adapter modal
+    }
   };
 
   const handleSwitchWallet = () => {
     setIsOpen(false);
     if (activeFamily === "solana") {
-      connectSolanaWallet();
+      switchSolanaWallet();
     } else {
       connectWallet();
     }
@@ -104,11 +112,11 @@ export function WalletMenu() {
   const handleDisconnect = async () => {
     console.log("[WalletMenu] Disconnect clicked");
     setIsOpen(false);
-    
+
     console.log("[WalletMenu] Calling disconnect...");
     await disconnect();
     console.log("[WalletMenu] Disconnect complete");
-    
+
     // No need to reload - React state updates will handle the UI transition smoothly
   };
 
@@ -222,7 +230,9 @@ export function WalletMenu() {
                   d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
                 />
               </svg>
-              <span>Switch to {activeFamily === "solana" ? "Base" : "Solana"}</span>
+              <span>
+                Switch to {activeFamily === "solana" ? "Base" : "Solana"}
+              </span>
             </button>
             <button
               type="button"
@@ -270,4 +280,3 @@ export function WalletMenu() {
     </div>
   );
 }
-

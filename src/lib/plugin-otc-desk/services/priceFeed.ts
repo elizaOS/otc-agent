@@ -1,11 +1,11 @@
-// Price feed service for fetching real-time elizaOS token price
+// Price feed service for fetching real-time token prices
 
 interface PriceCache {
   price: number;
   timestamp: number;
 }
 
-export const ELIZAOS_TOKEN = {
+const DEFAULT_TOKEN_CONFIG = {
   symbol: "elizaOS",
   name: "elizaOS",
   decimals: 5,
@@ -13,16 +13,21 @@ export const ELIZAOS_TOKEN = {
 } as const;
 
 const CACHE_TTL = 60 * 1000; // 60 seconds
-const FALLBACK_ELIZAOS_PRICE = 0.00005;
+const FALLBACK_TOKEN_PRICE = 0.00005;
 const FALLBACK_ETH_PRICE = 3500;
 
-// Helper to get runtime cache (works in serverless)
+/**
+ * Get cached price from runtime storage
+ */
 async function getCachedPrice(key: string): Promise<PriceCache | null> {
   const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
   return (await runtime.getCache<PriceCache>(`price:${key}`)) ?? null;
 }
 
+/**
+ * Set cached price in runtime storage
+ */
 async function setCachedPrice(key: string, value: PriceCache): Promise<void> {
   const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
@@ -30,11 +35,12 @@ async function setCachedPrice(key: string, value: PriceCache): Promise<void> {
 }
 
 /**
- * Fetch elizaOS price from CoinGecko API
+ * Fetch token price from CoinGecko API by coingecko ID
+ * For dynamic multi-token pricing, use MarketDataService instead
  */
-async function fetchElizaPriceFromCoinGecko(): Promise<number | null> {
+async function fetchTokenPriceFromCoinGecko(coingeckoId: string): Promise<number | null> {
   const response = await fetch(
-    `https://api.coingecko.com/api/v3/simple/price?ids=${ELIZAOS_TOKEN.coingeckoId}&vs_currencies=usd`,
+    `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`,
     {
       headers: {
         Accept: "application/json",
@@ -43,15 +49,15 @@ async function fetchElizaPriceFromCoinGecko(): Promise<number | null> {
   );
 
   if (!response.ok) {
-    console.warn(`CoinGecko API returned ${response.status} for elizaOS`);
+    console.warn(`CoinGecko API returned ${response.status} for ${coingeckoId}`);
     return null;
   }
 
   const data = await response.json();
-  const price = data[ELIZAOS_TOKEN.coingeckoId]?.usd;
+  const price = data[coingeckoId]?.usd;
 
   if (typeof price !== "number") {
-    console.warn(`Invalid price data for elizaOS:`, data);
+    console.warn(`Invalid price data for ${coingeckoId}:`, data);
     return null;
   }
 
@@ -59,10 +65,11 @@ async function fetchElizaPriceFromCoinGecko(): Promise<number | null> {
 }
 
 /**
- * Get elizaOS token price with caching and fallback
+ * Get token price with caching and fallback
+ * For multi-token support, use MarketDataService instead
  */
 export async function getElizaPriceUsd(): Promise<number> {
-  const cacheKey = "elizaOS";
+  const cacheKey = DEFAULT_TOKEN_CONFIG.symbol;
 
   // Check runtime cache first
   const cached = await getCachedPrice(cacheKey);
@@ -71,7 +78,7 @@ export async function getElizaPriceUsd(): Promise<number> {
   }
 
   // Try to fetch from CoinGecko
-  const price = await fetchElizaPriceFromCoinGecko();
+  const price = await fetchTokenPriceFromCoinGecko(DEFAULT_TOKEN_CONFIG.coingeckoId);
 
   if (price !== null) {
     // Update runtime cache
@@ -83,8 +90,8 @@ export async function getElizaPriceUsd(): Promise<number> {
   }
 
   // Use fallback price
-  console.warn(`Using fallback price for elizaOS: $${FALLBACK_ELIZAOS_PRICE}`);
-  return FALLBACK_ELIZAOS_PRICE;
+  console.warn(`Using fallback price: $${FALLBACK_TOKEN_PRICE}`);
+  return FALLBACK_TOKEN_PRICE;
 }
 
 /**
@@ -128,9 +135,9 @@ export async function getEthPriceUsd(): Promise<number> {
 }
 
 /**
- * Format elizaOS token amount with proper display
+ * Format token amount with proper display (K, M, B suffixes)
  */
-export function formatElizaAmount(amount: string | number): string {
+export function formatTokenAmount(amount: string | number): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
 
   if (isNaN(num)) return "0";
@@ -148,9 +155,10 @@ export function formatElizaAmount(amount: string | number): string {
 }
 
 /**
- * Convert elizaOS amount to USD value
+ * Convert token amount to USD value
+ * For multi-token support, use MarketDataService for dynamic token pricing
  */
-export async function getElizaValueUsd(
+export async function getTokenValueUsd(
   amount: string | number,
 ): Promise<number> {
   const price = await getElizaPriceUsd();
@@ -164,7 +172,7 @@ export async function getElizaValueUsd(
 export async function clearPriceCache(): Promise<void> {
   const { agentRuntime } = await import("../../agent-runtime");
   const runtime = await agentRuntime.getRuntime();
-  await runtime.setCache("price:elizaOS", null);
+  await runtime.setCache(`price:${DEFAULT_TOKEN_CONFIG.symbol}`, null);
   await runtime.setCache("price:ETH", null);
   console.log("[PriceFeed] Price cache cleared");
 }

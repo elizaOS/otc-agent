@@ -3,12 +3,15 @@
  */
 
 export interface ParsedOffer {
+  consignmentId: bigint;
+  tokenId: string;
   beneficiary: string;
   tokenAmount: bigint;
   discountBps: bigint;
   createdAt: bigint;
   unlockTime: bigint;
   priceUsdPerToken: bigint;
+  maxPriceDeviation: bigint;
   ethUsdPrice: bigint;
   currency: number;
   approved: boolean;
@@ -23,39 +26,45 @@ export interface ParsedOffer {
  * Parse an Offer struct from viem contract read.
  * Viem may return structs as arrays or objects depending on version/config.
  *
- * Struct order from OTC.sol:
- * 0. beneficiary (address)
- * 1. tokenAmount (uint256)
- * 2. discountBps (uint256)
- * 3. createdAt (uint256)
- * 4. unlockTime (uint256)
- * 5. priceUsdPerToken (uint256)
- * 6. ethUsdPrice (uint256)
- * 7. currency (uint8)
- * 8. approved (bool)
- * 9. paid (bool)
- * 10. fulfilled (bool)
- * 11. cancelled (bool)
- * 12. payer (address)
- * 13. amountPaid (uint256)
+ * Struct order from OTC.sol (UPDATED with multi-token support):
+ * 0. consignmentId (uint256)
+ * 1. tokenId (bytes32)
+ * 2. beneficiary (address)
+ * 3. tokenAmount (uint256)
+ * 4. discountBps (uint256)
+ * 5. createdAt (uint256)
+ * 6. unlockTime (uint256)
+ * 7. priceUsdPerToken (uint256)
+ * 8. maxPriceDeviation (uint256)
+ * 9. ethUsdPrice (uint256)
+ * 10. currency (uint8)
+ * 11. approved (bool)
+ * 12. paid (bool)
+ * 13. fulfilled (bool)
+ * 14. cancelled (bool)
+ * 15. payer (address)
+ * 16. amountPaid (uint256)
  */
 export function parseOfferStruct(offerRaw: any): ParsedOffer {
   if (Array.isArray(offerRaw)) {
     return {
-      beneficiary: offerRaw[0],
-      tokenAmount: offerRaw[1],
-      discountBps: offerRaw[2],
-      createdAt: offerRaw[3],
-      unlockTime: offerRaw[4],
-      priceUsdPerToken: offerRaw[5],
-      ethUsdPrice: offerRaw[6],
-      currency: offerRaw[7],
-      approved: offerRaw[8],
-      paid: offerRaw[9],
-      fulfilled: offerRaw[10],
-      cancelled: offerRaw[11],
-      payer: offerRaw[12],
-      amountPaid: offerRaw[13],
+      consignmentId: offerRaw[0],
+      tokenId: offerRaw[1],
+      beneficiary: offerRaw[2],
+      tokenAmount: offerRaw[3],
+      discountBps: offerRaw[4],
+      createdAt: offerRaw[5],
+      unlockTime: offerRaw[6],
+      priceUsdPerToken: offerRaw[7],
+      maxPriceDeviation: offerRaw[8],
+      ethUsdPrice: offerRaw[9],
+      currency: offerRaw[10],
+      approved: offerRaw[11],
+      paid: offerRaw[12],
+      fulfilled: offerRaw[13],
+      cancelled: offerRaw[14],
+      payer: offerRaw[15],
+      amountPaid: offerRaw[16],
     };
   }
   return offerRaw as ParsedOffer;

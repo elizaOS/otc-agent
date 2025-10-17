@@ -3,7 +3,7 @@
 import { Button } from "@/components/button";
 import { Dialog } from "@/components/dialog";
 import { useMultiWallet } from "@/components/multiwallet";
-import { NetworkConnectButton } from "@/components/network-connect";
+import { BaseLogo, SolanaLogo } from "@/components/icons/index";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { useOTC } from "@/hooks/contracts/useOTC";
 import type { OTCQuote } from "@/utils/xml-parser";
@@ -49,7 +49,23 @@ export function AcceptQuoteModal({
   onComplete,
 }: AcceptQuoteModalProps) {
   const { isConnected, address } = useAccount();
-  const { activeFamily, isConnected: walletConnected, solanaWallet, solanaPublicKey } = useMultiWallet();
+  const {
+    activeFamily,
+    isConnected: walletConnected,
+    solanaWallet,
+    solanaPublicKey,
+    setActiveFamily,
+    login,
+    connectSolanaWallet,
+    isPhantomInstalled,
+  } = useMultiWallet();
+
+  // Validate chain compatibility
+  const quoteChain = initialQuote?.tokenChain;
+  const isChainMismatch = quoteChain ? (
+    (quoteChain === "solana" && activeFamily !== "solana") ||
+    ((quoteChain === "base" || quoteChain === "ethereum") && activeFamily !== "evm")
+  ) : false;
   const router = useRouter();
   const {
     otcAddress,
@@ -240,14 +256,48 @@ export function AcceptQuoteModal({
     } as any)) as bigint;
   }
 
-  async function readOffer(offerId: bigint): Promise<[`0x${string}`, bigint, bigint, bigint, bigint, bigint, bigint, number, boolean, boolean, boolean, boolean, `0x${string}`, bigint]> {
+  async function readOffer(
+    offerId: bigint,
+  ): Promise<
+    [
+      `0x${string}`,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      number,
+      boolean,
+      boolean,
+      boolean,
+      boolean,
+      `0x${string}`,
+      bigint,
+    ]
+  > {
     if (!otcAddress) throw new Error("Missing OTC address");
     return (await publicClient.readContract({
       address: otcAddress as `0x${string}`,
       abi,
       functionName: "offers",
       args: [offerId],
-    } as any)) as [`0x${string}`, bigint, bigint, bigint, bigint, bigint, bigint, number, boolean, boolean, boolean, boolean, `0x${string}`, bigint];
+    } as any)) as [
+      `0x${string}`,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      number,
+      boolean,
+      boolean,
+      boolean,
+      boolean,
+      `0x${string}`,
+      bigint,
+    ];
   }
 
   async function wait(ms: number) {
@@ -303,7 +353,8 @@ export function AcceptQuoteModal({
     }
 
     // Verify fulfillment
-    const [, , , , , , , , , isPaidFinal, isFulfilledFinal] = await readOffer(offerId);
+    const [, , , , , , , , , isPaidFinal, isFulfilledFinal] =
+      await readOffer(offerId);
 
     if (!(isPaidFinal || isFulfilledFinal)) {
       throw new Error(
@@ -371,6 +422,15 @@ export function AcceptQuoteModal({
      * - Backend controls payment execution
      * - Consistent pricing (no user slippage)
      */
+
+    // SAFETY: Block execution if chain mismatch
+    if (isChainMismatch) {
+      const requiredChain = quoteChain === "solana" ? "Solana" : "Base";
+      const currentChain = activeFamily === "solana" ? "Solana" : "Base";
+      throw new Error(
+        `Chain mismatch: This quote requires ${requiredChain} but you're connected to ${currentChain}. Please switch networks.`
+      );
+    }
 
     // Solana path
     if (isSolanaActive) {
@@ -458,7 +518,7 @@ export function AcceptQuoteModal({
         .accountsStrict({
           desk,
           deskTokenTreasury,
-          beneficiary: solanaWallet.publicKey,
+          beneficiary: new SolPubkey(solanaWallet.publicKey.toBase58()),
           offer: offerKeypair.publicKey,
           systemProgram: SolSystemProgram.programId,
         })
@@ -693,13 +753,39 @@ export function AcceptQuoteModal({
 
     // Backend should have auto-fulfilled (requireApproverToFulfill=true)
     if (!approveData.autoFulfilled || !approveData.fulfillTx) {
-      throw new Error(
-        "Backend did not automatically fulfill offer. Contact support.",
-      );
+      // Check if contract is misconfigured
+      if (!requireApprover) {
+        throw new Error(
+          "Contract is not configured for auto-fulfillment. Please contact support to enable requireApproverToFulfill."
+        );
+      }
+
+      // Check if offer was already paid
+      const [, , , , , , , , , isPaid] = await readOffer(newOfferId);
+      if (isPaid) {
+        console.log("[AcceptQuote] Offer was already paid by another transaction");
+        // Continue to verification - this is actually fine
+      } else {
+        // Something went wrong - offer is approved but not paid
+        console.error("[AcceptQuote] Backend approval succeeded but auto-fulfill failed:", {
+          approveData,
+          requireApprover,
+          offerId: newOfferId.toString(),
+        });
+        
+        throw new Error(
+          `Backend approval succeeded but payment failed. Your offer (ID: ${newOfferId}) is approved but not paid. Please contact support with this offer ID.`
+        );
+      }
     }
 
-    const paymentTxHash = approveData.fulfillTx as `0x${string}`;
-    console.log(`[AcceptQuote] ✅ Backend auto-fulfilled:`, paymentTxHash);
+    const paymentTxHash = (approveData.fulfillTx || approveData.approvalTx) as `0x${string}`;
+    
+    if (approveData.fulfillTx) {
+      console.log(`[AcceptQuote] ✅ Backend auto-fulfilled:`, paymentTxHash);
+    } else {
+      console.log(`[AcceptQuote] ✅ Offer was already fulfilled, continuing...`);
+    }
 
     // Verify payment was actually made on-chain
     console.log("[AcceptQuote] Verifying payment on-chain...");
@@ -799,6 +885,22 @@ export function AcceptQuoteModal({
     setTokenAmount(clampAmount(maxByFunds));
   };
 
+  const handleConnectEvm = () => {
+    console.log("[AcceptQuote] Connecting to Base/EVM...");
+    setActiveFamily("evm");
+    login();
+  };
+
+  const handleConnectSolana = () => {
+    console.log("[AcceptQuote] Connecting to Solana...");
+    if (!isPhantomInstalled) {
+      setError("Please install Phantom or Solflare wallet to use Solana.");
+      return;
+    }
+    setActiveFamily("solana");
+    connectSolanaWallet();
+  };
+
   // Validation: enforce token amount limits (USD check will happen on-chain)
   const validationError = useMemo(() => {
     if (tokenAmount < MIN_TOKENS) {
@@ -831,9 +933,67 @@ export function AcceptQuoteModal({
       data-testid="accept-quote-modal"
     >
       <div className="w-full max-w-[720px] mx-auto p-0 overflow-hidden rounded-2xl bg-zinc-950 text-white ring-1 ring-white/10">
+        {/* Chain Mismatch Warning */}
+        {isChainMismatch && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                <span className="text-yellow-500 text-sm">⚠</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-yellow-500 mb-1">
+                  Wrong Network
+                </h3>
+                <p className="text-xs text-zinc-300 mb-3">
+                  This quote is for a{" "}
+                  <span className="font-semibold">
+                    {quoteChain === "solana" ? "Solana" : "Base"}
+                  </span>{" "}
+                  token, but you&apos;re connected to{" "}
+                  <span className="font-semibold">
+                    {activeFamily === "solana" ? "Solana" : "Base"}
+                  </span>
+                  . Please switch networks to continue.
+                </p>
+                <div className="flex gap-2">
+                  {quoteChain === "solana" ? (
+                    <Button
+                      onClick={handleConnectSolana}
+                      className="!h-8 !px-3 !text-xs bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:brightness-110"
+                    >
+                      <div className="flex items-center gap-2">
+                        <SolanaLogo className="w-4 h-4" />
+                        Switch to Solana
+                      </div>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleConnectEvm}
+                      className="!h-8 !px-3 !text-xs bg-[#0052ff] hover:bg-[#0047e5]"
+                    >
+                      <div className="flex items-center gap-2">
+                        <BaseLogo className="w-4 h-4" />
+                        Switch to Base
+                      </div>
+                    </Button>
+                  )}
+                  <Button
+                    onClick={onClose}
+                    className="!h-8 !px-3 !text-xs bg-zinc-800 hover:bg-zinc-700"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 pt-4 sm:pt-5">
-          <div className="text-base sm:text-lg font-semibold tracking-wide">Your Quote</div>
+          <div className="text-base sm:text-lg font-semibold tracking-wide">
+            Your Quote
+          </div>
           <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
             <button
               type="button"
@@ -859,9 +1019,13 @@ export function AcceptQuoteModal({
         {/* Main amount card */}
         <div className="m-3 sm:m-5 rounded-xl bg-zinc-900 ring-1 ring-white/10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-5 pt-3 sm:pt-4 gap-2">
-            <div className="text-xs sm:text-sm text-zinc-400">Amount to Buy</div>
+            <div className="text-xs sm:text-sm text-zinc-400">
+              Amount to Buy
+            </div>
             <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-zinc-400">
-              <span className="whitespace-nowrap">Balance: {balanceDisplay}</span>
+              <span className="whitespace-nowrap">
+                Balance: {balanceDisplay}
+              </span>
               <button
                 type="button"
                 className="text-orange-400 hover:text-orange-300 font-medium"
@@ -889,7 +1053,9 @@ export function AcceptQuoteModal({
                   <span className="text-orange-400 text-lg">₣</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold">$elizaOS</div>
+                  <div className="text-sm font-semibold">
+                    {initialQuote?.tokenSymbol ? `$${initialQuote.tokenSymbol}` : "Tokens"}
+                  </div>
                   <div className="text-xs text-zinc-500">{`Balance: ${balanceDisplay}`}</div>
                 </div>
               </div>
@@ -973,21 +1139,36 @@ export function AcceptQuoteModal({
                   />
                   <div className="relative z-10 h-full w-full flex flex-col items-center justify-center text-center px-4 sm:px-6">
                     <h3 className="text-lg sm:text-xl font-semibold text-white tracking-tight mb-2">
-                      Connect Wallet
+                      Choose a network
                     </h3>
-                    <p className="text-zinc-300 text-xs sm:text-sm mb-4">
-                      Get discounted elizaOS tokens. Let's deal, anon.
+                    <p className="text-zinc-300 text-sm sm:text-md mb-4">
+                      Let&apos;s deal, anon.
                     </p>
-                    <div className="inline-flex gap-2">
-                      <NetworkConnectButton 
-                        className="!h-9 !px-4"
-                        onBeforeOpen={() => {
-                          // Close accept quote modal before opening network selection
-                          onClose();
-                        }}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
+                      <button
+                        type="button"
+                        onClick={handleConnectEvm}
+                        className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 focus:ring-offset-zinc-900"
                       >
-                        Connect
-                      </NetworkConnectButton>
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                            <BaseLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                          </div>
+                          <div className="text-xl sm:text-2xl font-bold">Base</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConnectSolana}
+                        className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-gradient-to-br from-[#9945FF] via-[#8752F3] to-[#14F195] border-2 border-[#9945FF]/50 hover:border-[#14F195]/50 hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#9945FF] focus:ring-offset-2 focus:ring-offset-zinc-900"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                            <SolanaLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                          </div>
+                          <div className="text-xl sm:text-2xl font-bold">Solana</div>
+                        </div>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1021,8 +1202,9 @@ export function AcceptQuoteModal({
               color="orange"
               className="bg-orange-600 border-orange-700 hover:brightness-110 w-full sm:w-auto"
               disabled={
-                Boolean(validationError) || insufficientFunds || isProcessing
+                Boolean(validationError) || insufficientFunds || isProcessing || isChainMismatch
               }
+              title={isChainMismatch ? `Switch to ${quoteChain === "solana" ? "Solana" : "Base"} first` : undefined}
             >
               <div className="px-4 py-2">
                 {isSolanaActive ? "Buy Now" : "Buy Now"}

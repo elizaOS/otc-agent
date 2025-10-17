@@ -1,9 +1,9 @@
 import { Provider } from "@elizaos/core";
 
 export const tokenProvider: Provider = {
-  name: "ELIZAOS",
-  description: "Information about $elizaOS and $ai16z",
-  position: 99,
+  name: "AI16Z_HISTORY",
+  description: "[OPTIONAL] Historical information about $elizaOS and $ai16z rebrand - use only when user specifically asks about ai16z or elizaOS history",
+  position: 100,
   dynamic: true,
   get: async () => {
     const text = `ai16z started in October 2024 as a playful, meme‑inspired decentralized autonomous organization (DAO) and governance token on the Solana blockchain. It parodied the name of venture capital firm “a16z” (Andreessen Horowitz) and intended to build autonomous investor‑like AI agents. 

@@ -63,6 +63,20 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Fetch token data to get chain and symbol information
+  let tokenChain = undefined;
+  let tokenSymbol = undefined;
+  if (tokenId) {
+    try {
+      const { TokenDB } = await import("@/services/database");
+      const token = await TokenDB.getToken(tokenId);
+      tokenChain = token.chain;
+      tokenSymbol = token.symbol;
+    } catch (error) {
+      console.warn("[Quote API] Failed to fetch token data:", tokenId);
+    }
+  }
+
   const formattedQuote = quote
     ? {
         quoteId: quote.quoteId,
@@ -81,10 +95,12 @@ export async function GET(request: NextRequest) {
         paymentAmount: quote.paymentAmount,
         status: quote.status,
         createdAt: quote.createdAt,
+        tokenChain,
+        tokenSymbol,
       }
     : null;
 
-  console.log("[Quote API] Returning:", formattedQuote?.quoteId ?? "null");
+  console.log("[Quote API] Returning:", formattedQuote?.quoteId ?? "null", "chain:", tokenChain);
   return NextResponse.json({ success: true, quote: formattedQuote });
 }
 

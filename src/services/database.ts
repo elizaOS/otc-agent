@@ -219,12 +219,12 @@ export class TokenDB {
   ): Promise<Token> {
     const runtime = await agentRuntime.getRuntime();
     const tokenId = `token-${data.chain}-${data.contractAddress.toLowerCase()}`;
-    
+
     const existing = await runtime.getCache<Token>(`token:${tokenId}`);
     if (existing) {
       return existing;
     }
-    
+
     const token: Token = {
       ...data,
       id: tokenId,

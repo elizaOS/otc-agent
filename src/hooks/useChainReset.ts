@@ -59,7 +59,7 @@ export function useChainReset() {
           if (address) {
             await disconnect();
           }
-          
+
           // Logout from Privy (handles all wallet types)
           await logout();
 
@@ -87,7 +87,7 @@ export function useChainReset() {
     if (address) {
       await disconnect();
     }
-    
+
     // Logout from Privy (handles all wallet types)
     await logout();
 

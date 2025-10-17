@@ -5,12 +5,7 @@
  * Critical for maintaining data integrity across the system.
  */
 
-import {
-  createPublicClient,
-  http,
-  type Address,
-  type Abi,
-} from "viem";
+import { createPublicClient, http, type Address, type Abi } from "viem";
 import { hardhat, base, baseSepolia } from "viem/chains";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { QuoteDB } from "./database";
@@ -55,13 +50,15 @@ export class ReconciliationService {
       transport: http(rpcUrl),
     });
 
-    this.otcAddress = process.env.NEXT_PUBLIC_OTC_ADDRESS as Address | undefined;
+    this.otcAddress = process.env.NEXT_PUBLIC_OTC_ADDRESS as
+      | Address
+      | undefined;
     this.abi = otcArtifact.abi as Abi;
   }
 
   async readContractOffer(offerId: string | number): Promise<ContractOffer> {
     if (!this.otcAddress) throw new Error("OTC address not configured");
-    
+
     // Type cast needed - viem's readContract return type is too complex for TypeScript to infer
     const [
       beneficiary,
@@ -83,7 +80,22 @@ export class ReconciliationService {
       abi: this.abi,
       functionName: "offers",
       args: [BigInt(offerId)],
-    } as any)) as [Address, bigint, bigint, bigint, bigint, bigint, bigint, number, boolean, boolean, boolean, boolean, Address, bigint];
+    } as any)) as [
+      Address,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      number,
+      boolean,
+      boolean,
+      boolean,
+      boolean,
+      Address,
+      bigint,
+    ];
 
     return {
       beneficiary,
@@ -183,7 +195,7 @@ export class ReconciliationService {
     contractAddress: string;
   }> {
     if (!this.otcAddress) throw new Error("OTC address not configured");
-    
+
     const blockNumber = await this.client.getBlockNumber();
     // Type cast needed - viem's readContract parameters are too complex
     await this.client.readContract({

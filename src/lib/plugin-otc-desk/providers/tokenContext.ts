@@ -88,6 +88,3 @@ export const tokenContextProvider: Provider = {
     return { text };
   },
 };
-
-
-

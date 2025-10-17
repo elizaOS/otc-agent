@@ -93,7 +93,7 @@ I can offer 15% discount with a 6-month lockup.
 
 <quote>
   <quoteId>OTC-XXXXX</quoteId>
-  <tokenSymbol>elizaOS</tokenSymbol>
+  <tokenSymbol>TOKEN</tokenSymbol>
   <lockupMonths>6</lockupMonths>
   <lockupDays>180</lockupDays>
   <pricePerToken>0.00127</pricePerToken>
@@ -343,7 +343,7 @@ const messageReceivedHandler = async ({
     // Parse actions from response - support both XML tags and function-call syntax
     const xmlActionMatch = responseContent.match(/<action>(.*?)<\/action>/gi);
     const functionActionMatch = responseContent.match(
-      /\b(CREATE_OTC_QUOTE|ACCEPT_ELIZAOS_QUOTE|SHOW_ELIZAOS_HISTORY)\s*\(/gi,
+      /\b(CREATE_OTC_QUOTE)\s*\(/gi,
     );
 
     const actionNames: string[] = [];

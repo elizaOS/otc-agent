@@ -10,7 +10,7 @@ import {
   useBalance,
 } from "wagmi";
 import { hardhat } from "wagmi/chains";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, pad, keccak256, stringToBytes, decodeEventLog } from "viem";
 import type { Abi, Address } from "viem";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 const erc20Abi = [
@@ -90,6 +90,28 @@ export function useOTC(): {
   fulfillOffer: (offerId: bigint, valueWei?: bigint) => Promise<unknown>;
   approveUsdc: (amount: bigint) => Promise<unknown>;
   emergencyRefund: (offerId: bigint) => Promise<unknown>;
+  withdrawConsignment: (consignmentId: bigint) => Promise<unknown>;
+  createConsignmentOnChain: (params: {
+    tokenId: string;
+    amount: bigint;
+    isNegotiable: boolean;
+    fixedDiscountBps: number;
+    fixedLockupDays: number;
+    minDiscountBps: number;
+    maxDiscountBps: number;
+    minLockupDays: number;
+    maxLockupDays: number;
+    minDealAmount: bigint;
+    maxDealAmount: bigint;
+    isFractionalized: boolean;
+    isPrivate: boolean;
+    maxPriceVolatilityBps: number;
+    maxTimeToExecute: number;
+    gasDeposit: bigint;
+  }) => Promise<{ txHash: `0x${string}`; consignmentId: bigint }>;
+  approveToken: (tokenAddress: Address, amount: bigint) => Promise<unknown>;
+  getTokenAddress: (tokenId: string) => Promise<Address>;
+  getRequiredGasDeposit: () => Promise<bigint>;
   getRequiredPayment: (
     offerId: bigint,
     currency: "ETH" | "USDC",
@@ -189,7 +211,7 @@ export function useOTC(): {
     functionName: "getOffersForBeneficiary",
     args: [account as Address],
     chainId: hardhat.id,
-    query: { 
+    query: {
       enabled: enabled && Boolean(account),
       refetchInterval: 2000,
       staleTime: 0, // Always refetch - don't use cache
@@ -198,7 +220,10 @@ export function useOTC(): {
   });
   const myOfferIds = useMemo(() => {
     const ids = (myOfferIdsRes.data as bigint[] | undefined) ?? [];
-    console.log("[useOTC] My offer IDs from contract:", ids.map(id => id.toString()));
+    console.log(
+      "[useOTC] My offer IDs from contract:",
+      ids.map((id) => id.toString()),
+    );
     return ids;
   }, [myOfferIdsRes.data]);
 
@@ -213,7 +238,7 @@ export function useOTC(): {
 
   const myOffersRes = useReadContracts({
     contracts: myOffersContracts,
-    query: { 
+    query: {
       enabled: enabled && myOfferIds.length > 0,
       refetchInterval: 2000,
       staleTime: 0, // Always refetch - critical for showing latest paid/fulfilled state
@@ -360,6 +385,157 @@ export function useOTC(): {
     } as any);
   }
 
+  async function withdrawConsignment(consignmentId: bigint) {
+    if (!otcAddress) throw new Error("No OTC address");
+    if (!account) throw new Error("No wallet connected");
+    return writeContractAsync({
+      address: otcAddress,
+      abi,
+      functionName: "withdrawConsignment",
+      args: [consignmentId],
+    } as any);
+  }
+
+  async function createConsignmentOnChain(params: {
+    tokenId: string;
+    amount: bigint;
+    isNegotiable: boolean;
+    fixedDiscountBps: number;
+    fixedLockupDays: number;
+    minDiscountBps: number;
+    maxDiscountBps: number;
+    minLockupDays: number;
+    maxLockupDays: number;
+    minDealAmount: bigint;
+    maxDealAmount: bigint;
+    isFractionalized: boolean;
+    isPrivate: boolean;
+    maxPriceVolatilityBps: number;
+    maxTimeToExecute: number;
+    gasDeposit: bigint;
+  }): Promise<{ txHash: `0x${string}`; consignmentId: bigint }> {
+    if (!otcAddress) throw new Error("No OTC address");
+    if (!account) throw new Error("No wallet connected");
+    
+    // Fetch token data to get the contract's tokenId (keccak256 hash)
+    const tokenResponse = await fetch(`/api/tokens/${params.tokenId}`);
+    if (!tokenResponse.ok) {
+      throw new Error(`Failed to fetch token data for ${params.tokenId}`);
+    }
+    const tokenData = await tokenResponse.json();
+    if (!tokenData.success || !tokenData.token) {
+      throw new Error(`Token ${params.tokenId} not found`);
+    }
+    
+    // Get the symbol and compute the contract tokenId (keccak256 of the symbol)
+    const tokenIdBytes32 = keccak256(stringToBytes(tokenData.token.symbol));
+    
+    const txHash = await writeContractAsync({
+      address: otcAddress,
+      abi,
+      functionName: "createConsignment",
+      args: [
+        tokenIdBytes32,
+        params.amount,
+        params.isNegotiable,
+        params.fixedDiscountBps,
+        params.fixedLockupDays,
+        params.minDiscountBps,
+        params.maxDiscountBps,
+        params.minLockupDays,
+        params.maxLockupDays,
+        params.minDealAmount,
+        params.maxDealAmount,
+        params.isFractionalized,
+        params.isPrivate,
+        params.maxPriceVolatilityBps,
+        params.maxTimeToExecute,
+      ],
+      value: params.gasDeposit,
+    } as any);
+
+    // Wait for transaction receipt and parse the consignmentId from the event
+    console.log("[useOTC] Waiting for transaction receipt:", txHash);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+    console.log("[useOTC] Receipt received, parsing ConsignmentCreated event");
+    console.log("[useOTC] Receipt logs count:", receipt.logs.length);
+    console.log("[useOTC] OTC contract address:", otcAddress);
+    
+    // Find ConsignmentCreated event from the OTC contract
+    const consignmentCreatedEvent = receipt.logs.find((log: any) => {
+      // Check if log is from our OTC contract
+      if (log.address.toLowerCase() !== otcAddress.toLowerCase()) {
+        return false;
+      }
+      
+      try {
+        const decoded = decodeEventLog({
+          abi,
+          data: log.data,
+          topics: log.topics,
+        });
+        console.log("[useOTC] Decoded event:", decoded.eventName);
+        return decoded.eventName === "ConsignmentCreated";
+      } catch (e) {
+        console.log("[useOTC] Failed to decode log:", e);
+        return false;
+      }
+    });
+
+    if (!consignmentCreatedEvent) {
+      console.error("[useOTC] No ConsignmentCreated event found. Receipt logs:", receipt.logs);
+      throw new Error("ConsignmentCreated event not found in transaction receipt");
+    }
+
+    const decoded = decodeEventLog({
+      abi,
+      data: (consignmentCreatedEvent as any).data,
+      topics: (consignmentCreatedEvent as any).topics,
+    });
+
+    const consignmentId = (decoded.args as any).consignmentId as bigint;
+    console.log("[useOTC] Consignment created with ID:", consignmentId.toString());
+    
+    return { txHash: txHash as `0x${string}`, consignmentId };
+  }
+
+  async function approveToken(tokenAddress: Address, amount: bigint) {
+    if (!account) throw new Error("No wallet connected");
+    return writeContractAsync({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [otcAddress, amount],
+    } as any);
+  }
+
+  // Helper to extract contract address from tokenId format: "token-{chain}-{address}"
+  function extractContractAddress(tokenId: string): Address {
+    const parts = tokenId.split('-');
+    if (parts.length >= 3) {
+      // Format is: token-chain-address, so join everything after the second dash
+      return parts.slice(2).join('-') as Address;
+    }
+    // Fallback: assume it's already an address
+    return tokenId as Address;
+  }
+
+  async function getTokenAddress(tokenId: string): Promise<Address> {
+    // Simply extract the contract address from the tokenId
+    // The tokenId format is "token-{chain}-{contractAddress}"
+    return extractContractAddress(tokenId);
+  }
+
+  async function getRequiredGasDeposit(): Promise<bigint> {
+    if (!otcAddress) throw new Error("No OTC address");
+    const result = await publicClient.readContract({
+      address: otcAddress,
+      abi,
+      functionName: "requiredGasDepositPerConsignment",
+    } as any);
+    return result as bigint;
+  }
+
   // Helper to get exact required payment amount
   async function getRequiredPayment(
     offerId: bigint,
@@ -398,7 +574,10 @@ export function useOTC(): {
 
   const myOffers: (Offer & { id: bigint })[] = useMemo(() => {
     const base = myOffersRes.data ?? [];
-    console.log("[useOTC] myOfferIds:", myOfferIds.map(id => id.toString()));
+    console.log(
+      "[useOTC] myOfferIds:",
+      myOfferIds.map((id) => id.toString()),
+    );
     console.log("[useOTC] Raw response count:", base.length);
     console.log("[useOTC] Using contract address:", otcAddress);
     console.log("[useOTC] Wagmi query status:", {
@@ -406,12 +585,12 @@ export function useOTC(): {
       isError: myOffersRes.isError,
       isFetching: myOffersRes.isFetching,
     });
-    
+
     const offers = myOfferIds.map((id, idx) => {
       const rawResult = base[idx]?.result;
-      
+
       console.log(`[useOTC] Offer ${id} raw result:`, rawResult);
-      
+
       // Contract returns array: [beneficiary, tokenAmount, discountBps, createdAt, unlockTime,
       //   priceUsdPerToken, ethUsdPrice, currency, approved, paid, fulfilled, cancelled, payer, amountPaid]
       if (Array.isArray(rawResult)) {
@@ -431,15 +610,15 @@ export function useOTC(): {
           payer,
           amountPaid,
         ] = rawResult;
-        
-        console.log(`[useOTC] Offer ${id} parsed:`, { 
-          paid, 
-          fulfilled, 
+
+        console.log(`[useOTC] Offer ${id} parsed:`, {
+          paid,
+          fulfilled,
           cancelled,
           beneficiary,
           tokenAmount: tokenAmount?.toString(),
         });
-        
+
         return {
           id,
           beneficiary,
@@ -458,16 +637,32 @@ export function useOTC(): {
           amountPaid,
         } as Offer & { id: bigint };
       }
-      
+
       console.warn(`[useOTC] Offer ${id}: Invalid data format`, rawResult);
-      return { id, paid: false, fulfilled: false, cancelled: false } as Offer & { id: bigint };
+      return {
+        id,
+        paid: false,
+        fulfilled: false,
+        cancelled: false,
+      } as Offer & { id: bigint };
     });
-    
+
     console.log("[useOTC] Total offers parsed:", offers.length);
-    const paidOffers = offers.filter(o => o.paid);
-    console.log("[useOTC] Paid offers:", paidOffers.length, paidOffers.map(o => o.id.toString()));
+    const paidOffers = offers.filter((o) => o.paid);
+    console.log(
+      "[useOTC] Paid offers:",
+      paidOffers.length,
+      paidOffers.map((o) => o.id.toString()),
+    );
     return offers;
-  }, [myOfferIds, myOffersRes.data, myOffersRes.isLoading, myOffersRes.isError, myOffersRes.isFetching, otcAddress]);
+  }, [
+    myOfferIds,
+    myOffersRes.data,
+    myOffersRes.isLoading,
+    myOffersRes.isError,
+    myOffersRes.isFetching,
+    otcAddress,
+  ]);
 
   return {
     otcAddress,
@@ -512,6 +707,11 @@ export function useOTC(): {
     fulfillOffer,
     approveUsdc,
     emergencyRefund,
+    withdrawConsignment,
+    createConsignmentOnChain,
+    approveToken,
+    getTokenAddress,
+    getRequiredGasDeposit,
     getRequiredPayment,
   } as const;
 }

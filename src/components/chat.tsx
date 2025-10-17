@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ChatMessages } from "@/components/chat-messages";
 import { Dialog } from "@/components/dialog";
 import { useMultiWallet } from "@/components/multiwallet";
-import { NetworkConnectButton } from "@/components/network-connect";
+import { BaseLogo, SolanaLogo } from "@/components/icons/index";
 import { LoadingSpinner } from "@/components/spinner";
 import { TextareaWithActions } from "@/components/textarea-with-actions";
 import { AcceptQuoteModal } from "@/components/accept-quote-modal";
@@ -28,7 +28,15 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
   const [isAgentThinking, setIsAgentThinking] = useState<boolean>(false);
   const [entityId, setUserId] = useState<string | null>(null);
-  const { isConnected, entityId: walletEntityId } = useMultiWallet();
+  const {
+    isConnected,
+    entityId: walletEntityId,
+    activeFamily,
+    setActiveFamily,
+    login,
+    connectSolanaWallet,
+    isPhantomInstalled,
+  } = useMultiWallet();
   const [showConnectOverlay, setShowConnectOverlay] = useState<boolean>(false);
   const [currentQuote, setCurrentQuote] = useState<OTCQuote | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState<boolean>(false);
@@ -156,9 +164,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         // Deduplicate: remove optimistic client messages and use server versions
         setMessages((prev) => {
           // Filter out optimistic user messages (client-side only)
-          const withoutOptimistic = prev.filter(
-            (m) => !m.isUserMessage,
-          );
+          const withoutOptimistic = prev.filter((m) => !m.isUserMessage);
 
           // Merge and dedupe by server ID
           const byServerId = new Map<string, any>();
@@ -265,9 +271,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
             );
 
             // Remove optimistic client messages - they'll be replaced by server versions
-            const withoutOptimistic = prev.filter(
-              (m) => !m.isUserMessage,
-            );
+            const withoutOptimistic = prev.filter((m) => !m.isUserMessage);
 
             // Merge with new messages and dedupe by server ID
             const byServerId = new Map<string, ChatMessage>();
@@ -280,9 +284,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
             });
 
             const merged = Array.from(byServerId.values());
-            merged.sort(
-              (a, b) => (a.createdAt || 0) - (b.createdAt || 0),
-            );
+            merged.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
             console.log(
               `[Polling] After deduplication: ${merged.length} total messages (was ${prev.length})`,
@@ -486,9 +488,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
       if (!msg || msg.name === USER_NAME) continue;
 
       const parsed = parseMessageXML(
-        typeof msg.text === "string"
-          ? msg.text
-          : msg.content?.text || "",
+        typeof msg.text === "string" ? msg.text : msg.content?.text || "",
       );
 
       if (parsed?.type === "otc_quote" && parsed.data) {
@@ -498,9 +498,12 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
 
         // Only update if quote actually changed
         if (prevQuoteId !== newQuoteId) {
+          const quoteData = newQuote as OTCQuote;
           console.log("[Quote Update] Quote changed:", {
             prevQuoteId,
             newQuoteId,
+            tokenChain: quoteData.tokenChain,
+            tokenSymbol: quoteData.tokenSymbol,
           });
 
           // Trigger glow effect only if there was a previous quote
@@ -515,7 +518,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
 
           // Update the ref and state
           previousQuoteIdRef.current = newQuoteId;
-          if ('tokenSymbol' in newQuote) {
+          if ("tokenSymbol" in newQuote) {
             setCurrentQuote(newQuote as OTCQuote);
           }
         }
@@ -525,10 +528,8 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
   }, [messages]);
 
   const handleAcceptOffer = async () => {
-    // Ensure quote exists before opening modal
     if (!currentQuote) {
       console.error("[Chat] Cannot accept offer - no quote available");
-      // TODO: Show error message to user
       return;
     }
 
@@ -610,8 +611,40 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     );
   }, [entityId, createNewRoom]);
 
+  const handleConnectEvm = useCallback(() => {
+    console.log("[Chat] Connecting to Base/EVM...");
+    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
+    setShowConnectOverlay(false);
+    setActiveFamily("evm");
+    login();
+  }, [setActiveFamily, login]);
+
+  const handleConnectSolana = useCallback(() => {
+    console.log("[Chat] Connecting to Solana...");
+    if (!isPhantomInstalled) {
+      alert("Please install Phantom or Solflare wallet to use Solana.");
+      return;
+    }
+    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
+    setShowConnectOverlay(false);
+    setActiveFamily("solana");
+    connectSolanaWallet();
+  }, [isPhantomInstalled, setActiveFamily, connectSolanaWallet]);
+
+  const handleSwitchChain = useCallback((targetChain: "evm" | "solana") => {
+    console.log(`[Chat] Switching to ${targetChain}...`);
+    
+    if (targetChain === "solana") {
+      handleConnectSolana();
+    } else {
+      handleConnectEvm();
+    }
+  }, [handleConnectEvm, handleConnectSolana]);
+
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="flex flex-col w-full">
       <ChatBody
         messages={messages}
         isLoadingHistory={isLoadingHistory}
@@ -629,6 +662,10 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         onAcceptOffer={handleAcceptOffer}
         isOfferGlowing={isOfferGlowing}
         onClearChat={() => setShowClearChatModal(true)}
+        onConnectEvm={handleConnectEvm}
+        onConnectSolana={handleConnectSolana}
+        activeFamily={activeFamily}
+        onSwitchChain={handleSwitchChain}
       />
       <AcceptQuoteModal
         isOpen={showAcceptModal}
@@ -642,10 +679,11 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         open={showClearChatModal}
         onClose={() => setShowClearChatModal(false)}
       >
-        <div className="bg-white dark:bg-zinc-900 max-w-md">
-          <h3 className="text-xl font-semibold bg-red-500 dark:bg-red-500 mb-4 px-4 py-2">
+        <div className="bg-white dark:bg-zinc-900 max-w-md rounded-lg overflow-hidden">
+          <h3 className="text-xl font-semibold bg-red-500 dark:bg-red-500 mb-4 px-4 py-2 rounded-t-lg">
             Clear Chat History?
           </h3>
+          <div className="p-4">
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             This will permanently delete all messages and reset the agent&apos;s
             memory of your conversation. Your current quote will be reset to
@@ -664,6 +702,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
               </div>
             </Button>
           </div>
+          </div>
         </div>
       </Dialog>
     </div>
@@ -678,6 +717,8 @@ function ChatHeader({
   isOfferGlowing,
   onClearChat,
   isLoadingHistory,
+  activeFamily,
+  onSwitchChain,
 }: {
   messages: ChatMessage[];
   apiQuote: OTCQuote | null;
@@ -685,15 +726,36 @@ function ChatHeader({
   isOfferGlowing: boolean;
   onClearChat: () => void;
   isLoadingHistory: boolean;
+  activeFamily: string;
+  onSwitchChain: (chain: "evm" | "solana") => void;
 }) {
   // Use the quote passed from parent (extracted from messages)
   const currentQuote = apiQuote;
+
+  // Determine if user needs to switch chains
+  const needsChainSwitch = currentQuote && currentQuote.tokenChain ? (
+    (currentQuote.tokenChain === "solana" && activeFamily !== "solana") ||
+    ((currentQuote.tokenChain === "base" || currentQuote.tokenChain === "ethereum") && activeFamily !== "evm")
+  ) : false;
+
+  const requiredChain = currentQuote?.tokenChain === "solana" ? "solana" : "evm";
+  const chainDisplayName = currentQuote?.tokenChain === "solana" ? "Solana" : "Base";
+
+  console.log("[ChatHeader] Chain check:", {
+    quoteChain: currentQuote?.tokenChain,
+    activeFamily,
+    needsChainSwitch,
+    requiredChain,
+  });
 
   return (
     <div className="mb-3">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
         {currentQuote ? (
           <>
+            <h2 className="text-sm font-semibold mb-2 px-1 py-2 text-zinc-600 dark:text-zinc-400 mr-auto">
+              Negotiate a Deal
+            </h2>
             {/* Desktop version */}
             <div className="hidden sm:flex items-center gap-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 px-4 py-2">
               <div className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -724,16 +786,20 @@ function ChatHeader({
                 </span>
               </div>
               <Button
-                onClick={onAcceptOffer}
-                className={`!h-8 !px-3 !text-xs transition-all duration-300 !bg-orange-500 hover:!bg-orange-600 !text-white !border-orange-600 ${
-                  isOfferGlowing
-                    ? "shadow-lg shadow-orange-500/50 ring-2 ring-orange-400 animate-pulse"
-                    : ""
+                onClick={needsChainSwitch ? () => onSwitchChain(requiredChain) : onAcceptOffer}
+                className={`!h-8 !px-3 !text-xs transition-all duration-300 ${
+                  needsChainSwitch 
+                    ? "!bg-blue-500 hover:!bg-blue-600 !text-white !border-blue-600" 
+                    : `!bg-orange-500 hover:!bg-orange-600 !text-white !border-orange-600 ${
+                        isOfferGlowing
+                          ? "shadow-lg shadow-orange-500/50 ring-2 ring-orange-400 animate-pulse"
+                          : ""
+                      }`
                 }`}
-                color="orange"
-                title={`Accept Offer ${isOfferGlowing ? "(GLOWING)" : ""}`}
+                color={(needsChainSwitch ? "blue" : "orange") as "blue" | "orange"}
+                title={needsChainSwitch ? `Switch to ${chainDisplayName}` : `Accept Offer ${isOfferGlowing ? "(GLOWING)" : ""}`}
               >
-                Accept Offer
+                {needsChainSwitch ? `Switch to ${chainDisplayName}` : "Accept Offer"}
               </Button>
             </div>
 
@@ -770,16 +836,20 @@ function ChatHeader({
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={onAcceptOffer}
-                  className={`flex-1 !h-9 !px-3 !text-sm transition-all duration-300 !bg-orange-500 hover:!bg-orange-600 !text-white !border-orange-600 ${
-                    isOfferGlowing
-                      ? "shadow-lg shadow-orange-500/50 ring-2 ring-orange-400 animate-pulse"
-                      : ""
+                  onClick={needsChainSwitch ? () => onSwitchChain(requiredChain) : onAcceptOffer}
+                  className={`flex-1 !h-9 !px-3 !text-sm transition-all duration-300 ${
+                    needsChainSwitch 
+                      ? "!bg-blue-500 hover:!bg-blue-600 !text-white !border-blue-600" 
+                      : `!bg-orange-500 hover:!bg-orange-600 !text-white !border-orange-600 ${
+                          isOfferGlowing
+                            ? "shadow-lg shadow-orange-500/50 ring-2 ring-orange-400 animate-pulse"
+                            : ""
+                        }`
                   }`}
-                  color="orange"
-                  title={`Accept Offer ${isOfferGlowing ? "(GLOWING)" : ""}`}
+                  color={(needsChainSwitch ? "blue" : "orange") as "blue" | "orange"}
+                  title={needsChainSwitch ? `Switch to ${chainDisplayName}` : `Accept Offer ${isOfferGlowing ? "(GLOWING)" : ""}`}
                 >
-                  Accept Offer
+                  {needsChainSwitch ? `Switch to ${chainDisplayName}` : "Accept Offer"}
                 </Button>
                 {!isLoadingHistory && (
                   <Button
@@ -832,6 +902,10 @@ function ChatBody({
   onAcceptOffer,
   isOfferGlowing,
   onClearChat,
+  onConnectEvm,
+  onConnectSolana,
+  activeFamily,
+  onSwitchChain,
 }: {
   messages: ChatMessage[];
   isLoadingHistory: boolean;
@@ -849,9 +923,13 @@ function ChatBody({
   onAcceptOffer: () => void;
   isOfferGlowing: boolean;
   onClearChat: () => void;
+  onConnectEvm: () => void;
+  onConnectSolana: () => void;
+  activeFamily: string;
+  onSwitchChain: (chain: "evm" | "solana") => void;
 }) {
   return (
-    <div className="flex flex-col h-full min-h-0 w-full">
+    <div className="flex flex-col w-full">
       {/* Connect wallet overlay */}
       <Dialog
         open={showConnectOverlay}
@@ -874,26 +952,36 @@ function ChatBody({
               />
               <div className="relative z-10 h-full w-full flex flex-col items-center justify-center text-center px-6">
                 <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">
-                  Connect Wallet
+                  Choose a network
                 </h2>
                 <p className="text-zinc-300 text-sm mb-4">
-                  Get discounted elizaOS tokens. Let&apos;s deal, anon.
+                  Get discounted tokens OTC. Let&apos;s deal, anon.
                 </p>
-                <div className="inline-flex gap-2">
-                  <NetworkConnectButton 
-                    className="!h-10 !px-4 !py-2 bg-orange-500 dark:bg-orange-500 rounded-lg"
-                    onBeforeOpen={() => {
-                      // Close this overlay before opening network selection
-                      localStorage.setItem("otc-desk-connect-overlay-seen", "1");
-                      localStorage.setItem(
-                        "otc-desk-connect-overlay-dismissed",
-                        "1",
-                      );
-                      setShowConnectOverlay(false);
-                    }}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
+                  <button
+                    type="button"
+                    onClick={onConnectEvm}
+                    className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 focus:ring-offset-zinc-900"
                   >
-                    Connect
-                  </NetworkConnectButton>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <BaseLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                      </div>
+                      <div className="text-xl sm:text-2xl font-bold">Base</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onConnectSolana}
+                    className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-gradient-to-br from-[#9945FF] via-[#8752F3] to-[#14F195] border-2 border-[#9945FF]/50 hover:border-[#14F195]/50 hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#9945FF] focus:ring-offset-2 focus:ring-offset-zinc-900"
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <SolanaLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                      </div>
+                      <div className="text-xl sm:text-2xl font-bold">Solana</div>
+                    </div>
+                  </button>
                 </div>
               </div>
               <button
@@ -931,9 +1019,9 @@ function ChatBody({
       </Dialog>
 
       {/* Main container - full width */}
-      <div className="relative z-10 flex-1 flex flex-col min-h-0 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+      <div className="relative z-10 flex flex-col border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
         {/* Chat section - Full width */}
-        <div className="flex-1 flex flex-col min-h-0 p-2 sm:p-3">
+        <div className="flex flex-col p-2 sm:p-3">
           <ChatHeader
             messages={messages}
             apiQuote={currentQuote}
@@ -941,12 +1029,14 @@ function ChatBody({
             isOfferGlowing={isOfferGlowing}
             onClearChat={onClearChat}
             isLoadingHistory={isLoadingHistory}
+            activeFamily={activeFamily}
+            onSwitchChain={onSwitchChain}
           />
 
           {/* Chat Messages - only scrollable area */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 min-h-0 overflow-y-auto px-2 mb-2"
+            className="overflow-y-auto px-2 mb-2 h-[60vh] min-h-[400px]"
           >
             {isLoadingHistory ? (
               <div className="flex items-center justify-center min-h-full">
@@ -956,14 +1046,14 @@ function ChatBody({
                 </div>
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex items-center justify-center min-h-full text-center">
+              <div className="flex items-center justify-center min-h-[300px] text-center">
                 <div>
                   <h2 className="text-xl font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-                    Welcome to elizaOS OTC Desk
+                    Welcome to AI OTC Desk
                   </h2>
                   <p className="text-zinc-500 dark:text-zinc-400">
                     {isConnected
-                      ? "Ask me about quotes for elizaOS tokens!"
+                      ? "Ask me about quotes and discounted token deals!"
                       : "Connect your wallet to get a quote and start chatting."}
                   </p>
                 </div>
@@ -989,7 +1079,7 @@ function ChatBody({
           </div>
 
           {/* Input Area - pinned to bottom of chat */}
-          <div className="mt-auto">
+          <div className="mt-4">
             <TextareaWithActions
               ref={textareaRef}
               input={input}
@@ -998,7 +1088,9 @@ function ChatBody({
               isLoading={isAgentThinking || inputDisabled || !isConnected}
               placeholder={
                 isConnected
-                  ? "Negotiate a deal for $elizaOS!"
+                  ? currentQuote?.tokenSymbol 
+                    ? `Negotiate a deal for $${currentQuote.tokenSymbol}!`
+                    : "Ask about available tokens or request a quote!"
                   : "Connect wallet to chat"
               }
             />

@@ -5,14 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { useMultiWallet } from "@/components/multiwallet";
 import { MyListingsTab } from "@/components/my-listings-tab";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/table";
 import { useOTC } from "@/hooks/contracts/useOTC";
 import { resumeFreshAuth } from "@/utils/x-share";
 
@@ -32,23 +24,6 @@ function formatTokenAmount(amountWei: bigint): string {
   return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
-function computeUsd8(offer: any): bigint {
-  const ta = BigInt(offer?.tokenAmount ?? 0n);
-  const priceUsdPerToken = BigInt(offer?.priceUsdPerToken ?? 0n); // 8d
-  const dbps = BigInt(offer?.discountBps ?? 0n);
-  const usd8 =
-    (((ta * priceUsdPerToken) / 10n ** 18n) * (10_000n - dbps)) / 10_000n;
-  return usd8;
-}
-
-function formatUsd(amount: number): string {
-  // No cents, compact thousands
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(2)}M`;
-  if (amount >= 1_000)
-    return amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  return amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
 function getLockupLabel(createdAt: bigint, unlockTime: bigint): string {
   const seconds = Math.max(0, Number(unlockTime) - Number(createdAt));
   const months = Math.max(1, Math.round(seconds / (30 * 24 * 60 * 60)));
@@ -56,7 +31,8 @@ function getLockupLabel(createdAt: bigint, unlockTime: bigint): string {
 }
 
 export function MyDealsContent() {
-  const { activeFamily, evmAddress, solanaPublicKey, isConnected } = useMultiWallet();
+  const { activeFamily, evmAddress, solanaPublicKey, isConnected } =
+    useMultiWallet();
   const {
     myOffers,
     claim,
@@ -88,8 +64,12 @@ export function MyDealsContent() {
     }
 
     const [dealsRes, consignmentsRes] = await Promise.all([
-      fetch(`/api/deal-completion?wallet=${walletAddr}`).then((res) => res.json()),
-      fetch(`/api/consignments?consigner=${walletAddr}`).then((res) => res.json()),
+      fetch(`/api/deal-completion?wallet=${walletAddr}`).then((res) =>
+        res.json(),
+      ),
+      fetch(`/api/consignments?consigner=${walletAddr}`).then((res) =>
+        res.json(),
+      ),
     ]);
 
     if (dealsRes.success && dealsRes.deals) {
@@ -146,8 +126,7 @@ export function MyDealsContent() {
 
         return {
           id: BigInt(deal.offerId || "0"),
-          beneficiary:
-            deal.beneficiary || solanaWalletAddress,
+          beneficiary: deal.beneficiary || solanaWalletAddress,
           // Use 18 decimals to match formatTokenAmount function (which divides by 1e18)
           tokenAmount: tokenAmountBigInt,
           discountBps: Number(deal.discountBps) || 1000,
@@ -302,20 +281,6 @@ export function MyDealsContent() {
     return sortAsc ? list : list.reverse();
   }, [inProgress, sortAsc]);
 
-  const stats = useMemo(() => {
-    if (inProgress.length === 0)
-      return { totalUsd: 0, totalDeals: 0, avgDiscountPct: 0 };
-    let totalUsd8 = 0n;
-    let totalDiscountBps = 0;
-    for (const o of inProgress) {
-      totalUsd8 += computeUsd8(o);
-      totalDiscountBps += Number(o.discountBps ?? 0n);
-    }
-    const totalUsd = Number(totalUsd8) / 1e8;
-    const avgDiscountPct = totalDiscountBps / inProgress.length / 100;
-    return { totalUsd, totalDeals: inProgress.length, avgDiscountPct };
-  }, [inProgress]);
-
   // Resume pending share if coming back from OAuth 1.0a
   useMemo(() => {
     (async () => {
@@ -381,202 +346,159 @@ export function MyDealsContent() {
               No active deals. Create one from the chat to get started.
             </div>
           ) : (
-            <>
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-                <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200 dark:divide-zinc-800">
-                  <div className="p-4 sm:p-6">
-                    <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-                      Total Value
+            <div className="space-y-4">
+              {sorted.map((o, index) => {
+                const now = Math.floor(Date.now() / 1000);
+                const matured = Number(o.unlockTime) <= now;
+                const discountPct = Number(o.discountBps ?? 0n) / 100;
+                const lockup = getLockupLabel(o.createdAt, o.unlockTime);
+                const uniqueKey =
+                  (o as any).quoteId || o.id.toString() || `deal-${index}`;
+
+                return (
+                  <div
+                    key={uniqueKey}
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                          Amount
+                        </div>
+                        <div className="font-semibold">
+                          {formatTokenAmount(o.tokenAmount)} tokens
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                          Maturity Date
+                        </div>
+                        <div className="font-semibold">
+                          {formatDate(o.unlockTime)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                          Discount
+                        </div>
+                        <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
+                          {discountPct.toFixed(0)}%
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                          Lockup Duration
+                        </div>
+                        <span className="inline-flex items-center rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 text-xs font-medium">
+                          {lockup}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                          Status
+                        </div>
+                        {matured ? (
+                          <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
+                            Ready to Claim
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-amber-600/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 text-xs font-medium">
+                            Locked
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold flex items-baseline gap-2">
-                      <span>{formatUsd(stats.totalUsd)}</span>
-                      <span className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                        USD
-                      </span>
+
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                      <Button
+                        color="zinc"
+                        onClick={async () => {
+                          if (o.quoteId) {
+                            window.location.href = `/deal/${o.quoteId}`;
+                            return;
+                          }
+
+                          console.log(
+                            "[MyDeals] No quoteId, looking up by offerId:",
+                            o.id?.toString(),
+                          );
+
+                          const response = await fetch(
+                            `/api/quote/by-offer/${o.id}`,
+                          );
+                          if (response.redirected) {
+                            window.location.href = response.url;
+                          } else if (response.ok) {
+                            const data = await response.json();
+                            if (data.quoteId) {
+                              window.location.href = `/deal/${data.quoteId}`;
+                            } else {
+                              throw new Error("No quoteId in response");
+                            }
+                          } else {
+                            throw new Error(
+                              `Failed to lookup quote: ${response.status}`,
+                            );
+                          }
+                        }}
+                        className="!px-4 !py-2"
+                      >
+                        View Deal
+                      </Button>
+                      {matured && (
+                        <Button
+                          color="orange"
+                          disabled={isClaiming}
+                          onClick={async () => {
+                            await claim(o.id);
+                          }}
+                          className="!px-4 !py-2"
+                        >
+                          {isClaiming ? "Withdrawing…" : "Withdraw"}
+                        </Button>
+                      )}
+                      {emergencyRefundsEnabled && !matured && (
+                        <Button
+                          color="red"
+                          disabled={refunding === o.id}
+                          onClick={async () => {
+                            const createdAt = Number(o.createdAt);
+                            const now = Math.floor(Date.now() / 1000);
+                            const daysSinceCreation =
+                              (now - createdAt) / (24 * 60 * 60);
+
+                            if (daysSinceCreation < 90) {
+                              alert(
+                                `Emergency refund available in ${Math.ceil(90 - daysSinceCreation)} days`,
+                              );
+                              return;
+                            }
+
+                            if (
+                              confirm(
+                                "Request emergency refund? This will cancel the deal and return your payment.",
+                              )
+                            ) {
+                              setRefunding(o.id);
+                              await emergencyRefund(o.id);
+                              alert("Refund successful!");
+                            }
+                          }}
+                          title="Request emergency refund (90+ days)"
+                          className="!px-4 !py-2"
+                        >
+                          {refunding === o.id ? "Refunding..." : "Refund"}
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="p-4 sm:p-6">
-                    <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-                      Total Deals
-                    </div>
-                    <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold">
-                      {stats.totalDeals}
-                    </div>
-                  </div>
-                  <div className="p-4 sm:p-6">
-                    <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-                      Average Discount
-                    </div>
-                    <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold">
-                      {stats.avgDiscountPct.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
-                <div className="min-w-[800px]">
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader className="whitespace-nowrap">Amount (elizaOS)</TableHeader>
-                        <TableHeader>
-                          <button
-                            className="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-white whitespace-nowrap"
-                            onClick={() => setSortAsc((v) => !v)}
-                          >
-                            <span>Maturity Date</span>
-                            <span className="text-xs">
-                              {sortAsc ? "\u2193" : "\u2191"}
-                            </span>
-                          </button>
-                        </TableHeader>
-                        <TableHeader className="whitespace-nowrap">Discount</TableHeader>
-                        <TableHeader className="whitespace-nowrap">Lockup Duration</TableHeader>
-                        <TableHeader className="whitespace-nowrap">Status</TableHeader>
-                        <TableHeader className="text-right whitespace-nowrap">Action</TableHeader>
-                      </TableRow>
-                    </TableHead>
-                  <TableBody>
-                    {sorted.map((o, index) => {
-                      const now = Math.floor(Date.now() / 1000);
-                      const matured = Number(o.unlockTime) <= now;
-                      const discountPct = Number(o.discountBps ?? 0n) / 100;
-                      const lockup = getLockupLabel(o.createdAt, o.unlockTime);
-                      // Use quoteId if available (Solana), otherwise offerId
-                      const uniqueKey =
-                        (o as any).quoteId ||
-                        o.id.toString() ||
-                        `deal-${index}`;
-                      return (
-                        <TableRow key={uniqueKey}>
-                          <TableCell>
-                            {formatTokenAmount(o.tokenAmount)}
-                          </TableCell>
-                          <TableCell>{formatDate(o.unlockTime)}</TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
-                              {discountPct.toFixed(0)}%
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 text-xs font-medium">
-                              {lockup}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {matured ? (
-                              <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
-                                Ready to Claim
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-amber-600/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 text-xs font-medium">
-                                Locked
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                color="zinc"
-                                onClick={async () => {
-                                  // If we have a quoteId, use it directly
-                                  if (o.quoteId) {
-                                    window.location.href = `/deal/${o.quoteId}`;
-                                    return;
-                                  }
-
-                                  // Fallback: lookup quoteId by offerId (for old data without proper linking)
-                                  console.log(
-                                    "[MyDeals] No quoteId, looking up by offerId:",
-                                    o.id?.toString(),
-                                  );
-
-                                  const response = await fetch(
-                                    `/api/quote/by-offer/${o.id}`,
-                                  );
-                                  if (response.redirected) {
-                                    window.location.href = response.url;
-                                  } else if (response.ok) {
-                                    // Handle JSON response with quoteId
-                                    const data = await response.json();
-                                    if (data.quoteId) {
-                                      window.location.href = `/deal/${data.quoteId}`;
-                                    } else {
-                                      throw new Error("No quoteId in response");
-                                    }
-                                  } else {
-                                    throw new Error(
-                                      `Failed to lookup quote: ${response.status}`,
-                                    );
-                                  }
-                                }}
-                                className="!px-3 !py-1.5 !text-sm whitespace-nowrap"
-                              >
-                                View Deal
-                              </Button>
-                              {matured && (
-                                <Button
-                                  color={
-                                    (matured ? "orange" : "zinc") as
-                                      | "orange"
-                                      | "zinc"
-                                  }
-                                  disabled={!matured || isClaiming}
-                                  onClick={async () => {
-                                    await claim(o.id);
-                                  }}
-                                  className="!px-3 !py-1.5 !text-sm whitespace-nowrap"
-                                >
-                                  {isClaiming ? "Withdrawing…" : "Withdraw"}
-                                </Button>
-                              )}
-                              {/* Emergency refund button - show if enabled and deal is stuck */}
-                              {emergencyRefundsEnabled && !matured && (
-                                <Button
-                                  color="red"
-                                  disabled={refunding === o.id}
-                                  onClick={async () => {
-                                    const createdAt = Number(o.createdAt);
-                                    const now = Math.floor(Date.now() / 1000);
-                                    const daysSinceCreation =
-                                      (now - createdAt) / (24 * 60 * 60);
-
-                                    if (daysSinceCreation < 90) {
-                                      alert(
-                                        `Emergency refund available in ${Math.ceil(90 - daysSinceCreation)} days`,
-                                      );
-                                      return;
-                                    }
-
-                                    if (
-                                      confirm(
-                                        "Request emergency refund? This will cancel the deal and return your payment.",
-                                      )
-                                    ) {
-                                      setRefunding(o.id);
-                                      await emergencyRefund(o.id);
-                                      alert("Refund successful!");
-                                    }
-                                  }}
-                                  title="Request emergency refund (90+ days)"
-                                  className="!px-3 !py-1.5 !text-sm whitespace-nowrap"
-                                >
-                                  {refunding === o.id
-                                    ? "Refunding..."
-                                    : "Refund"}
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                </div>
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
         </div>
       </main>

@@ -15,12 +15,8 @@ const WalletConnectorInner = ({
   onConnectionChange,
   showAsButton,
 }: WalletConnectorProps) => {
-  const {
-    isConnected,
-    evmAddress,
-    solanaPublicKey,
-    activeFamily,
-  } = useMultiWallet();
+  const { isConnected, evmAddress, solanaPublicKey, activeFamily } =
+    useMultiWallet();
 
   // Debug logging
   useEffect(() => {

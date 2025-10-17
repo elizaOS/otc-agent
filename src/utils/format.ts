@@ -21,4 +21,3 @@ export function formatDate(tsSeconds: bigint): string {
     year: "numeric",
   });
 }
-

@@ -175,17 +175,17 @@ export class ConsignmentService {
   async reserveAmount(consignmentId: string, amount: string): Promise<void> {
     const { agentRuntime } = await import("@/lib/agent-runtime");
     const runtime = await agentRuntime.getRuntime();
-    
+
     const lockKey = `consignment_lock:${consignmentId}`;
     const existingLock = await runtime.getCache<boolean>(lockKey);
     if (existingLock) {
       throw new Error("Consignment is being modified, try again");
     }
-    
+
     await runtime.setCache(lockKey, true);
-    
+
     const consignment = await ConsignmentDB.getConsignment(consignmentId);
-    
+
     if (consignment.status !== "active") {
       await runtime.deleteCache(lockKey);
       throw new Error("Consignment is not active");
@@ -217,7 +217,7 @@ export class ConsignmentService {
       status,
       lastDealAt: Date.now(),
     });
-    
+
     await runtime.deleteCache(lockKey);
   }
 

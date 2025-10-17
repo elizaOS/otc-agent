@@ -1,11 +1,8 @@
-import Image from "next/image";
-
 interface ICard {
   number: string | number;
   title: string;
   description: string;
   button: string;
-  note?: boolean;
   onClick?: () => void;
   disabled?: boolean;
 }
@@ -15,7 +12,6 @@ export default function Card({
   title,
   description,
   button,
-  note,
   onClick,
   disabled,
 }: ICard) {
@@ -30,21 +26,6 @@ export default function Card({
           </p>
         </div>
       </div>
-      {note ? (
-        <div className="mx-7 my-4 flex flex-row space-x-2">
-          <Image
-            src="/info-line.svg"
-            height={24}
-            width={24}
-            alt="information-icon"
-            className="h-[24px] w-[24px] place-self-center select-none"
-            draggable={false}
-          />
-          <p className="text-[12px] text-[#64FFAA80]/50">
-            Tokens are sent to your wallet on unlock.
-          </p>
-        </div>
-      ) : null}
       <button
         onClick={onClick}
         disabled={disabled}

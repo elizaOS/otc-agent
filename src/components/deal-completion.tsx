@@ -111,7 +111,7 @@ export function DealCompletion({ quote }: DealCompletionProps) {
       quote.discountUsd > 0 ? `$${quote.discountUsd.toFixed(2)}` : "TBD";
     const roiText = roi > 0 ? `${roi.toFixed(1)}%` : "TBD";
 
-    const text = `Just secured ${parseFloat(quote.tokenAmount).toLocaleString()} elizaOS at ${(quote.discountBps / 100).toFixed(0)}% discount on elizaOS OTC Desk!
+    const text = `Just secured ${parseFloat(quote.tokenAmount).toLocaleString()} tokens at ${(quote.discountBps / 100).toFixed(0)}% discount on AI OTC Desk!
 
 💰 Saved: ${savingsText}
 ⏱️ Lockup: ${quote.lockupMonths} months
@@ -346,7 +346,7 @@ export function DealCompletion({ quote }: DealCompletionProps) {
               <div>
                 <p className="text-zinc-400 text-sm">Token Amount</p>
                 <p className="text-2xl font-bold text-white">
-                  {parseFloat(quote.tokenAmount).toLocaleString()} elizaOS
+                  {parseFloat(quote.tokenAmount).toLocaleString()} tokens
                 </p>
               </div>
               <div className="text-right">

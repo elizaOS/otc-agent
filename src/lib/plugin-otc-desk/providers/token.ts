@@ -1,9 +1,9 @@
 import { Provider } from "@elizaos/core";
 
 export const tokenProvider: Provider = {
-  name: "TOKEN",
+  name: "ELIZAOS_INFO",
   description:
-    "Information about the new $elizaOS token and migration from $ai16z",
+    "[OPTIONAL] Historical information about the $elizaOS token and migration from $ai16z - use only when user specifically asks about elizaOS or ai16z",
   position: 99,
   dynamic: false,
   get: async () => {

@@ -579,85 +579,111 @@ export async function POST(request: NextRequest) {
   if (requireApproverToFulfill && !approvedOffer.paid) {
     console.log("[Approve API] Auto-fulfilling offer (approver-only mode)...");
 
-    const accountAddr = (account.address || account) as Address;
+    try {
+      const accountAddr = (account.address || account) as Address;
 
-    // Calculate required payment
-    const currency = approvedOffer.currency;
-    let valueWei: bigint | undefined;
+      // Calculate required payment
+      const currency = approvedOffer.currency;
+      let valueWei: bigint | undefined;
 
-    if (currency === 0) {
-      // ETH payment required
-      const requiredEth = (await publicClient.readContract({
+      if (currency === 0) {
+        // ETH payment required
+        const requiredEth = (await publicClient.readContract({
+          address: OTC_ADDRESS,
+          abi,
+          functionName: "requiredEthWei",
+          args: [BigInt(offerId)],
+        } as any)) as bigint;
+
+        valueWei = requiredEth;
+        console.log("[Approve API] Required ETH:", requiredEth.toString());
+      } else {
+        // USDC payment - need to approve first
+        const usdcAddress = (await publicClient.readContract({
+          address: OTC_ADDRESS,
+          abi,
+          functionName: "usdc",
+          args: [],
+        } as any)) as Address;
+
+        const requiredUsdc = (await publicClient.readContract({
+          address: OTC_ADDRESS,
+          abi,
+          functionName: "requiredUsdcAmount",
+          args: [BigInt(offerId)],
+        } as any)) as bigint;
+
+        console.log("[Approve API] Required USDC:", requiredUsdc.toString());
+
+        // Approve USDC
+        const erc20Abi = [
+          {
+            type: "function",
+            name: "approve",
+            stateMutability: "nonpayable",
+            inputs: [
+              { name: "spender", type: "address" },
+              { name: "amount", type: "uint256" },
+            ],
+            outputs: [{ name: "", type: "bool" }],
+          },
+        ] as Abi;
+
+        const { request: approveUsdcReq } = await publicClient.simulateContract({
+          address: usdcAddress,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [OTC_ADDRESS, requiredUsdc],
+          account: accountAddr,
+        });
+
+        await walletClient.writeContract(approveUsdcReq);
+        console.log("[Approve API] USDC approved");
+      }
+
+      // Fulfill offer
+      const { request: fulfillReq } = await publicClient.simulateContract({
         address: OTC_ADDRESS,
         abi,
-        functionName: "requiredEthWei",
+        functionName: "fulfillOffer",
         args: [BigInt(offerId)],
-      } as any)) as bigint;
-
-      valueWei = requiredEth;
-      console.log("[Approve API] Required ETH:", requiredEth.toString());
-    } else {
-      // USDC payment - need to approve first
-      const usdcAddress = (await publicClient.readContract({
-        address: OTC_ADDRESS,
-        abi,
-        functionName: "usdc",
-        args: [],
-      } as any)) as Address;
-
-      const requiredUsdc = (await publicClient.readContract({
-        address: OTC_ADDRESS,
-        abi,
-        functionName: "requiredUsdcAmount",
-        args: [BigInt(offerId)],
-      } as any)) as bigint;
-
-      console.log("[Approve API] Required USDC:", requiredUsdc.toString());
-
-      // Approve USDC
-      const erc20Abi = [
-        {
-          type: "function",
-          name: "approve",
-          stateMutability: "nonpayable",
-          inputs: [
-            { name: "spender", type: "address" },
-            { name: "amount", type: "uint256" },
-          ],
-          outputs: [{ name: "", type: "bool" }],
-        },
-      ] as Abi;
-
-      const { request: approveUsdcReq } = await publicClient.simulateContract({
-        address: usdcAddress,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [OTC_ADDRESS, requiredUsdc],
         account: accountAddr,
+        value: valueWei,
       });
 
-      await walletClient.writeContract(approveUsdcReq);
-      console.log("[Approve API] USDC approved");
+      fulfillTxHash = await walletClient.writeContract(fulfillReq);
+      console.log("[Approve API] Fulfill tx sent:", fulfillTxHash);
+
+      await publicClient.waitForTransactionReceipt({ hash: fulfillTxHash });
+      console.log("[Approve API] ✅ Offer fulfilled automatically");
+    } catch (fulfillError) {
+      console.error("[Approve API] ❌ Auto-fulfill failed:", fulfillError);
+      
+      // Check if offer got paid by another transaction during our attempt
+      const recheckOffer = (await publicClient.readContract({
+        address: OTC_ADDRESS,
+        abi,
+        functionName: "offers",
+        args: [BigInt(offerId)],
+      } as any)) as any;
+      
+      const recheckParsed = parseOfferStruct(recheckOffer);
+      
+      if (recheckParsed.paid) {
+        console.log("[Approve API] ✅ Offer was paid by another transaction, continuing...");
+        fulfillTxHash = undefined; // No fulfillTx from us, but offer is paid
+      } else {
+        // Offer is approved but not paid - this is a real error
+        throw new Error(
+          `Auto-fulfill failed: ${fulfillError instanceof Error ? fulfillError.message : String(fulfillError)}. Offer is approved but not paid.`
+        );
+      }
     }
-
-    // Fulfill offer
-    const { request: fulfillReq } = await publicClient.simulateContract({
-      address: OTC_ADDRESS,
-      abi,
-      functionName: "fulfillOffer",
-      args: [BigInt(offerId)],
-      account: accountAddr,
-      value: valueWei,
-    });
-
-    fulfillTxHash = await walletClient.writeContract(fulfillReq);
-    console.log("[Approve API] Fulfill tx sent:", fulfillTxHash);
-
-    await publicClient.waitForTransactionReceipt({ hash: fulfillTxHash });
-    console.log("[Approve API] ✅ Offer fulfilled automatically");
-  } else {
+  } else if (approvedOffer.paid) {
+    console.log("[Approve API] ✅ Offer already paid, skipping auto-fulfill");
+  } else if (!requireApproverToFulfill) {
     console.log(
-      "[Approve API] ✅ Offer approved. User must now fulfill (pay).",
+      "[Approve API] ⚠️  requireApproverToFulfill is disabled. User must fulfill (pay) manually.",
     );
   }
 

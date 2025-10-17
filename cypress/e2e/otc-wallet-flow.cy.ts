@@ -213,11 +213,56 @@ describe('OTC Desk - Complete Wallet Flow (EVM)', () => {
     });
   });
 
-  describe('5. Accept Quote Modal', () => {
+  describe('5. Chain Validation', () => {
+    it('shows correct button based on chain match', {
+      retries: 2
+    }, () => {
+      cy.wait(2000);
+      
+      // Check if button text matches the required chain
+      // If quote is for Base and user is on Base, should show "Accept Offer"
+      // If quote is for different chain, should show "Switch to [Chain]"
+      cy.get('body', { timeout: 10000 }).then(($body) => {
+        const hasAcceptButton = $body.find(':contains("Accept Offer")').length > 0;
+        const hasSwitchButton = $body.find(':contains("Switch to")').length > 0;
+        
+        // One of these should be true
+        expect(hasAcceptButton || hasSwitchButton).to.be.true;
+      });
+    });
+
+    it('handles chain switching if needed', {
+      retries: 2
+    }, () => {
+      cy.wait(2000);
+      
+      // Check if we need to switch chains
+      cy.get('body').then(($body) => {
+        const switchButton = $body.find(':contains("Switch to")');
+        
+        if (switchButton.length > 0) {
+          // If switch button exists, click it
+          cy.log('Chain switch needed - clicking switch button');
+          switchButton.first().click();
+          
+          // Wait for chain switch
+          cy.wait(3000);
+          
+          // After switching, button should change to "Accept Offer"
+          cy.contains(/Accept Offer/i, { timeout: 15000 })
+            .should('be.visible');
+        } else {
+          cy.log('Already on correct chain');
+        }
+      });
+    });
+  });
+
+  describe('6. Accept Quote Modal', () => {
     it('opens accept quote modal', {
       retries: 2
     }, () => {
-      // Click Accept Offer button
+      // Click Accept Offer button (should be visible after chain validation)
       cy.contains(/Accept Offer|Accept Quote/i, { timeout: 10000 })
         .first()
         .click({ force: true });
@@ -259,7 +304,7 @@ describe('OTC Desk - Complete Wallet Flow (EVM)', () => {
     });
   });
 
-  describe('6. Transaction Flow (Manual)', () => {
+  describe('7. Transaction Flow (Manual)', () => {
     /**
      * NOTE: These require MANUAL MetaMask approval
      */
@@ -292,7 +337,7 @@ describe('OTC Desk - Complete Wallet Flow (EVM)', () => {
     });
   });
 
-  describe('7. Cleanup', () => {
+  describe('8. Cleanup', () => {
     it('can close modal', () => {
       // If modal is still open, close it
       cy.get('body').then(($body) => {

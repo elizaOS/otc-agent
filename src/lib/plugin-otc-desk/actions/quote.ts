@@ -1,4 +1,4 @@
-// quote action - generate a new elizaOS quote and return an XML object to the frontend
+// quote action - generate a new OTC quote and return an XML object to the frontend
 
 import {
   Action,
@@ -14,7 +14,7 @@ import {
   getUserQuote,
   setUserQuote,
 } from "../providers/quote";
-import { ELIZAOS_TOKEN, getEthPriceUsd } from "../services/priceFeed";
+import { getEthPriceUsd } from "../services/priceFeed";
 import { ConsignmentService } from "@/services/consignmentService";
 import { TokenDB, type OTCConsignment } from "@/services/database";
 
@@ -120,9 +120,7 @@ function parseNegotiationRequest(text: string): {
   return result;
 }
 
-async function extractTokenContext(
-  text: string,
-): Promise<string | null> {
+async function extractTokenContext(text: string): Promise<string | null> {
   const tokenMatch = text.match(/\b([A-Z]{2,6})\b/);
   if (tokenMatch) {
     const symbol = tokenMatch[1];
@@ -259,7 +257,7 @@ export const quoteAction: Action = {
 
       if (callback) {
         await callback({
-          text: "Your elizaOS quote has been cancelled.",
+          text: "Your quote has been cancelled.",
           action: "QUOTE_CANCELLED",
         });
       }
@@ -272,6 +270,21 @@ export const quoteAction: Action = {
 
     const tokenId = await extractTokenContext(text);
     const existingQuote = await getUserQuote(entityId);
+
+    // Fetch token info for dynamic symbol/name
+    let tokenSymbol = "TOKEN";
+    let tokenName = "Token";
+    let tokenChain = undefined;
+    if (tokenId) {
+      try {
+        const token = await TokenDB.getToken(tokenId);
+        tokenSymbol = token.symbol;
+        tokenName = token.name;
+        tokenChain = token.chain;
+      } catch (error) {
+        console.warn("[CREATE_OTC_QUOTE] Failed to fetch token:", tokenId);
+      }
+    }
 
     let consignment: OTCConsignment | null = null;
     if (tokenId && negotiationRequest.tokenAmount) {
@@ -326,7 +339,8 @@ export const quoteAction: Action = {
       const xmlResponse = `
 <quote>
   <quoteId>${quoteId}</quoteId>
-  <tokenSymbol>${ELIZAOS_TOKEN.symbol}</tokenSymbol>
+  <tokenSymbol>${tokenSymbol}</tokenSymbol>
+  ${tokenChain ? `<tokenChain>${tokenChain}</tokenChain>` : ""}
   <lockupMonths>${negotiated.lockupMonths}</lockupMonths>
   <lockupDays>${lockupDays}</lockupDays>
   <pricePerToken>0</pricePerToken>
@@ -401,8 +415,9 @@ export const quoteAction: Action = {
     const xmlResponse = `
 <quote>
   <quoteId>${quoteId}</quoteId>
-  <tokenSymbol>${ELIZAOS_TOKEN.symbol}</tokenSymbol>
-  <tokenName>${ELIZAOS_TOKEN.name}</tokenName>
+  <tokenSymbol>${tokenSymbol}</tokenSymbol>
+  <tokenName>${tokenName}</tokenName>
+  ${tokenChain ? `<tokenChain>${tokenChain}</tokenChain>` : ""}
   <lockupMonths>5</lockupMonths>
   <lockupDays>150</lockupDays>
   <pricePerToken>0</pricePerToken>

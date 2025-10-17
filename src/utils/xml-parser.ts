@@ -6,24 +6,29 @@ export interface OTCQuote {
   quoteId: string;
   beneficiary?: string;
   tokenAmount: string;
-  tokenAmountFormatted: string;
+  tokenAmountFormatted?: string;
   tokenSymbol: string;
-  apr: number;
+  tokenChain?: "ethereum" | "base" | "solana";
+  apr?: number;
   lockupMonths: number;
   lockupDays: number;
-  pricePerToken: number;
-  totalValueUsd: number;
+  pricePerToken?: number;
+  priceUsd?: number;
+  totalValueUsd?: number;
+  totalUsd?: number;
   discountBps: number;
   discountPercent: number;
-  discountUsd: number;
-  finalPriceUsd: number;
+  discountUsd?: number;
+  finalPriceUsd?: number;
   paymentCurrency: string;
-  paymentAmount: string;
-  paymentSymbol: string;
+  paymentAmount?: string;
+  paymentSymbol?: string;
   ethPrice?: number;
-  createdAt: string;
+  createdAt?: string;
   status?: string;
-  message: string;
+  message?: string;
+  consignmentId?: string;
+  isFixedPrice?: boolean;
 }
 
 export interface QuoteAccepted {
@@ -108,11 +113,14 @@ export function parseOTCQuoteXML(xmlString: string): OTCQuote | null {
     return null;
   }
 
+  const tokenChain = getElementText("tokenChain") || getElementText("chain");
+
   return {
     quoteId: getElementText("quoteId"),
     tokenAmount: getElementText("tokenAmount"),
     tokenAmountFormatted: getElementText("tokenAmountFormatted"),
     tokenSymbol: getElementText("tokenSymbol"),
+    tokenChain: tokenChain ? (tokenChain as "ethereum" | "base" | "solana") : undefined,
     apr: getElementNumber("apr"),
     lockupMonths: getElementNumber("lockupMonths"),
     lockupDays: getElementNumber("lockupDays"),

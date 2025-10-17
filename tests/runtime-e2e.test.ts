@@ -115,15 +115,21 @@ describe('System Architecture Verification', () => {
     const quoteAction = fs.readFileSync(quoteActionPath, 'utf8');
     expect(quoteAction).not.toContain('createOTCOfferOnChain'); // No mocks!
     
-    // Check accept quote action
-    const acceptPath = path.join(
+    // Accept quote is handled by frontend modal + backend API (not agent action)
+    const modalPath = path.join(
       process.cwd(),
-      'src/lib/plugin-otc-desk/actions/acceptQuote.ts'
+      'src/components/accept-quote-modal.tsx'
     );
-    expect(fs.existsSync(acceptPath)).toBe(true);
+    expect(fs.existsSync(modalPath)).toBe(true);
+    
+    const backendApiPath = path.join(
+      process.cwd(),
+      'src/app/api/otc/approve/route.ts'
+    );
+    expect(fs.existsSync(backendApiPath)).toBe(true);
     
     console.log('  ✅ Quote action verified');
-    console.log('  ✅ Accept quote action verified');
+    console.log('  ✅ Accept quote flow verified (frontend modal + backend API)');
     console.log('  ✅ No mock functions found\n');
     
     results.agentIntegration = true;
@@ -258,12 +264,12 @@ describe('Integration Points', () => {
   it('should have API endpoints for contract interaction', () => {
     console.log('🔌 Checking API endpoints...');
     
-    // Check reconciliation API
-    const reconcileAPI = path.join(
+    // Check reconciliation cron API (actual endpoint)
+    const reconcileCronAPI = path.join(
       process.cwd(),
-      'src/app/api/reconcile/route.ts'
+      'src/app/api/cron/reconcile/route.ts'
     );
-    expect(fs.existsSync(reconcileAPI)).toBe(true);
+    expect(fs.existsSync(reconcileCronAPI)).toBe(true);
     
     // Check deal completion API
     const dealAPI = path.join(
@@ -279,9 +285,17 @@ describe('Integration Points', () => {
     );
     expect(fs.existsSync(cronAPI)).toBe(true);
     
-    console.log('  ✅ Reconciliation API exists');
+    // Check OTC approve API (backend auto-fulfill)
+    const approveAPI = path.join(
+      process.cwd(),
+      'src/app/api/otc/approve/route.ts'
+    );
+    expect(fs.existsSync(approveAPI)).toBe(true);
+    
+    console.log('  ✅ Reconciliation cron API exists');
     console.log('  ✅ Deal completion API exists');
-    console.log('  ✅ Cron job endpoint exists\n');
+    console.log('  ✅ Matured deals cron exists');
+    console.log('  ✅ OTC approve API exists\n');
   });
 
   it('should have frontend components for wallet interaction', () => {

@@ -85,6 +85,3 @@ export function useConsignerConsignments(consignerAddress: string | null) {
 
   return { consignments, isLoading };
 }
-
-
-

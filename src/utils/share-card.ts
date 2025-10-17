@@ -67,7 +67,7 @@ export async function createDealShareImage(args: {
   // Measure the number text to position the ticker next to it
   const numberWidth = ctx.measureText(amountNumber).width;
   ctx.fillStyle = "#60a5fa"; // Nice blue for the token ticker
-  ctx.fillText("$elizaOS", 60 + numberWidth, 260);
+  ctx.fillText("tokens", 60 + numberWidth + 20, 260);
 
   // Discount in orange
   ctx.font = "bold 60px Inter, Arial, sans-serif";

@@ -121,6 +121,10 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   mapping(bytes32 => uint256) public tokenDeposited;
   mapping(bytes32 => uint256) public tokenReserved;
 
+  // Gas prepayment tracking (per consignment)
+  mapping(uint256 => uint256) public consignmentGasDeposit;
+  uint256 public requiredGasDepositPerConsignment = 0.001 ether; // Default: 0.001 ETH per consignment
+
   // Roles
   address public agent;
   mapping(address => bool) public isApprover; // distributors/approvers
@@ -143,6 +147,10 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   event ConsignmentCreated(uint256 indexed consignmentId, bytes32 indexed tokenId, address indexed consigner, uint256 amount);
   event ConsignmentUpdated(uint256 indexed consignmentId);
   event ConsignmentWithdrawn(uint256 indexed consignmentId, uint256 amount);
+  event GasDepositMade(uint256 indexed consignmentId, uint256 amount);
+  event GasDepositRefunded(uint256 indexed consignmentId, address indexed consigner, uint256 amount);
+  event GasDepositWithdrawn(address indexed agent, uint256 amount);
+  event RequiredGasDepositUpdated(uint256 newAmount);
   event AgentUpdated(address indexed previous, address indexed newAgent);
   event ApproverUpdated(address indexed approver, bool allowed);
   event StableWithdrawn(address indexed to, uint256 usdcAmount, uint256 ethAmount);
@@ -216,6 +224,11 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
   function setMaxLockup(uint256 maxSecs) external onlyOwner { 
     maxLockupSeconds = maxSecs; 
   }
+  function setRequiredGasDeposit(uint256 amount) external onlyOwner {
+    require(amount <= 0.1 ether, "gas deposit too high");
+    requiredGasDepositPerConsignment = amount;
+    emit RequiredGasDepositUpdated(amount);
+  }
   function setRestrictFulfill(bool enabled) external onlyOwner { restrictFulfillToBeneficiaryOrApprover = enabled; emit RestrictFulfillUpdated(enabled); }
   function setRequireApproverToFulfill(bool enabled) external onlyOwner { requireApproverToFulfill = enabled; emit RequireApproverFulfillUpdated(enabled); }
   function setEmergencyRefund(bool enabled) external onlyOwner { emergencyRefundsEnabled = enabled; emit EmergencyRefundEnabled(enabled); }
@@ -265,13 +278,14 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     bool isPrivate,
     uint16 maxPriceVolatilityBps,
     uint32 maxTimeToExecute
-  ) external whenNotPaused returns (uint256) {
+  ) external payable whenNotPaused returns (uint256) {
     RegisteredToken memory tkn = tokens[tokenId];
     require(tkn.isActive, "token not active");
     require(amount > 0, "zero amount");
     require(minDealAmount <= maxDealAmount, "invalid deal amounts");
     require(minDiscountBps <= maxDiscountBps, "invalid discount range");
     require(minLockupDays <= maxLockupDays, "invalid lockup range");
+    require(msg.value >= requiredGasDepositPerConsignment, "insufficient gas deposit");
 
     IERC20(tkn.tokenAddress).safeTransferFrom(msg.sender, address(this), amount);
     tokenDeposited[tokenId] += amount;
@@ -299,6 +313,17 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
       createdAt: block.timestamp
     });
 
+    // Store gas deposit for future distribution costs
+    consignmentGasDeposit[consignmentId] = msg.value;
+    emit GasDepositMade(consignmentId, msg.value);
+
+    // Refund excess ETH if any
+    if (msg.value > requiredGasDepositPerConsignment) {
+      uint256 refund = msg.value - requiredGasDepositPerConsignment;
+      (bool success, ) = payable(msg.sender).call{value: refund}("");
+      require(success, "refund failed");
+    }
+
     emit ConsignmentCreated(consignmentId, tokenId, msg.sender, amount);
     return consignmentId;
   }
@@ -322,6 +347,15 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     require(tkn.tokenAddress != address(0), "invalid token");
     IERC20(tkn.tokenAddress).safeTransfer(msg.sender, withdrawAmount);
 
+    // Refund gas deposit to consigner
+    uint256 gasDeposit = consignmentGasDeposit[consignmentId];
+    if (gasDeposit > 0) {
+      consignmentGasDeposit[consignmentId] = 0;
+      (bool success, ) = payable(msg.sender).call{value: gasDeposit}("");
+      require(success, "gas refund failed");
+      emit GasDepositRefunded(consignmentId, msg.sender, gasDeposit);
+    }
+
     emit ConsignmentWithdrawn(consignmentId, withdrawAmount);
   }
 
@@ -333,11 +367,83 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     emit StableWithdrawn(to, usdcAmount, ethAmount);
   }
 
+  function withdrawGasDeposits(uint256[] calldata consignmentIds) external onlyApproverRole nonReentrant {
+    require(consignmentIds.length <= 50, "batch too large");
+    uint256 totalWithdrawn = 0;
+    for (uint256 i = 0; i < consignmentIds.length; i++) {
+      uint256 id = consignmentIds[i];
+      Consignment storage c = consignments[id];
+      // Only allow withdrawal if consignment is inactive (withdrawn or depleted)
+      if (!c.isActive && consignmentGasDeposit[id] > 0) {
+        uint256 amount = consignmentGasDeposit[id];
+        consignmentGasDeposit[id] = 0;
+        totalWithdrawn += amount;
+      }
+    }
+    require(totalWithdrawn > 0, "no gas deposits to withdraw");
+    (bool success, ) = payable(msg.sender).call{value: totalWithdrawn}("");
+    require(success, "withdrawal failed");
+    emit GasDepositWithdrawn(msg.sender, totalWithdrawn);
+  }
+
   function availableTokenInventoryForToken(bytes32 tokenId) public view returns (uint256) {
     RegisteredToken memory tkn = tokens[tokenId];
     uint256 bal = IERC20(tkn.tokenAddress).balanceOf(address(this));
     if (bal < tokenReserved[tokenId]) return 0;
     return bal - tokenReserved[tokenId];
+  }
+
+  // Legacy createOffer for backward compatibility (uses default token)
+  // Creates offer directly from available inventory without consignment
+  function createOffer(
+    uint256 tokenAmount,
+    uint256 discountBps,
+    PaymentCurrency currency,
+    uint256 lockupSeconds
+  ) external nonReentrant whenNotPaused returns (uint256) {
+    require(tokenAmount > 0, "zero amount");
+    require(lockupSeconds <= maxLockupSeconds, "lockup too long");
+    
+    // Use default token (bytes32(0) means use immutable token)
+    bytes32 defaultTokenId = bytes32(0);
+    
+    // Check available inventory
+    uint256 available = IERC20(token).balanceOf(address(this)) - tokenReserved[defaultTokenId];
+    require(tokenAmount <= available, "insufficient inventory");
+    require(tokenAmount <= maxTokenPerOrder, "exceeds max");
+    
+    uint256 priceUsdPerToken = _readTokenUsdPrice();
+    uint256 totalUsd = _mulDiv(tokenAmount, priceUsdPerToken, 10 ** tokenDecimals);
+    totalUsd = (totalUsd * (10_000 - discountBps)) / 10_000;
+    require(totalUsd >= minUsdAmount, "min usd not met");
+    
+    tokenReserved[defaultTokenId] += tokenAmount;
+    
+    uint256 offerId = nextOfferId++;
+    offers[offerId] = Offer({
+      consignmentId: 0, // No consignment for legacy offers
+      tokenId: defaultTokenId,
+      beneficiary: msg.sender,
+      tokenAmount: tokenAmount,
+      discountBps: discountBps,
+      createdAt: block.timestamp,
+      unlockTime: block.timestamp + lockupSeconds + defaultUnlockDelaySeconds,
+      priceUsdPerToken: priceUsdPerToken,
+      maxPriceDeviation: 1000, // 10% default
+      ethUsdPrice: currency == PaymentCurrency.ETH ? _readEthUsdPrice() : 0,
+      currency: currency,
+      approved: false,
+      paid: false,
+      fulfilled: false,
+      cancelled: false,
+      payer: address(0),
+      amountPaid: 0
+    });
+    
+    _beneficiaryOfferIds[msg.sender].push(offerId);
+    openOfferIds.push(offerId);
+    emit OfferCreated(offerId, msg.sender, tokenAmount, discountBps, currency);
+    return offerId;
   }
 
   // Multi-token offer creation
@@ -520,8 +626,14 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
     o.fulfilled = true;
     
     tokenReserved[o.tokenId] -= o.tokenAmount;
-    RegisteredToken memory tkn = tokens[o.tokenId];
-    IERC20(tkn.tokenAddress).safeTransfer(o.beneficiary, o.tokenAmount);
+    
+    // Use default token if tokenId is 0 (legacy offers)
+    if (o.tokenId == bytes32(0)) {
+      token.safeTransfer(o.beneficiary, o.tokenAmount);
+    } else {
+      RegisteredToken memory tkn = tokens[o.tokenId];
+      IERC20(tkn.tokenAddress).safeTransfer(o.beneficiary, o.tokenAmount);
+    }
     
     emit TokensClaimed(offerId, o.beneficiary, o.tokenAmount);
   }
@@ -537,8 +649,14 @@ contract OTC is Ownable, Pausable, ReentrancyGuard {
       o.fulfilled = true;
       
       tokenReserved[o.tokenId] -= o.tokenAmount;
-      RegisteredToken memory tkn = tokens[o.tokenId];
-      IERC20(tkn.tokenAddress).safeTransfer(o.beneficiary, o.tokenAmount);
+      
+      // Use default token if tokenId is 0 (legacy offers)
+      if (o.tokenId == bytes32(0)) {
+        token.safeTransfer(o.beneficiary, o.tokenAmount);
+      } else {
+        RegisteredToken memory tkn = tokens[o.tokenId];
+        IERC20(tkn.tokenAddress).safeTransfer(o.beneficiary, o.tokenAmount);
+      }
       
       emit TokensClaimed(id, o.beneficiary, o.tokenAmount);
     }

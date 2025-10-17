@@ -7,6 +7,10 @@ interface StepProps {
   updateFormData: (updates: any) => void;
   onNext: () => void;
   onBack: () => void;
+  requiredChain?: "evm" | "solana" | null;
+  isConnectedToRequiredChain?: boolean;
+  onConnectBase?: () => void;
+  onConnectSolana?: () => void;
 }
 
 export function AmountStep({
@@ -14,6 +18,10 @@ export function AmountStep({
   updateFormData,
   onNext,
   onBack,
+  requiredChain,
+  isConnectedToRequiredChain,
+  onConnectBase,
+  onConnectSolana,
 }: StepProps) {
   return (
     <div className="space-y-6">
@@ -29,21 +37,37 @@ export function AmountStep({
           className="w-full px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
         />
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-          Enter the total number of tokens you want to make available for OTC deals
+          Enter the total number of tokens you want to make available for OTC
+          deals
         </p>
       </div>
 
       <div className="flex gap-4">
-        <Button onClick={onBack} color="zinc" className="flex-1 !py-2">
+        <Button onClick={onBack} color="zinc" className="flex-1 !py-2 bg-zinc-800 text-white border-zinc-700">
           Back
         </Button>
-        <Button onClick={onNext} disabled={!formData.amount} className="flex-1 !py-2">
-          Next
-        </Button>
+        {formData.tokenId && requiredChain && !isConnectedToRequiredChain ? (
+          <Button
+            onClick={requiredChain === "solana" ? onConnectSolana : onConnectBase}
+            disabled={!formData.amount}
+            className={`flex-1 !py-2 text-white rounded-lg ${
+              requiredChain === "solana"
+                ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:opacity-90"
+                : "bg-[#0052ff] hover:bg-[#0047e5]"
+            }`}
+          >
+            Connect to {requiredChain === "solana" ? "Solana" : "Base"}
+          </Button>
+        ) : (
+          <Button
+            onClick={onNext}
+            disabled={!formData.amount}
+            className="flex-1 !py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg "
+          >
+            Next
+          </Button>
+        )}
       </div>
     </div>
   );
 }
-
-
-

@@ -18,6 +18,3 @@ export async function GET(
     consignments,
   });
 }
-
-
-

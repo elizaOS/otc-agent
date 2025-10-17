@@ -80,6 +80,3 @@ export function useMarketData(tokenId: string | null) {
 
   return { marketData, isLoading };
 }
-
-
-

@@ -1,64 +1,106 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ConsignmentCard } from "./consignment-card";
-import type { OTCConsignment, Token } from "@/services/database";
+import { TokenDealsSection } from "./token-deals-section";
+import { useTokenCache } from "@/hooks/useTokenCache";
+import type {
+  OTCConsignment,
+  Token,
+  TokenMarketData,
+} from "@/services/database";
 
 interface DealsGridProps {
   filters: {
-    chain: string;
+    chains: string[];
     minMarketCap: number;
     maxMarketCap: number;
-    isNegotiable: string;
-    isFractionalized: string;
+    negotiableTypes: string[];
+    isFractionalized: boolean;
   };
   searchQuery?: string;
 }
 
-interface ConsignmentWithToken extends OTCConsignment {
-  _token?: Token;
+interface TokenGroup {
+  tokenId: string;
+  token: Token | null;
+  marketData: TokenMarketData | null;
+  consignments: OTCConsignment[];
+}
+
+function TokenGroupLoader({ tokenGroup }: { tokenGroup: TokenGroup }) {
+  const { token, marketData: cachedMarketData } = useTokenCache(
+    tokenGroup.tokenId,
+  );
+
+  if (!token) return null;
+
+  return (
+    <TokenDealsSection
+      token={token}
+      marketData={cachedMarketData}
+      consignments={tokenGroup.consignments}
+    />
+  );
 }
 
 export function DealsGrid({ filters, searchQuery = "" }: DealsGridProps) {
-  const [consignments, setConsignments] = useState<ConsignmentWithToken[]>([]);
+  const [tokenGroups, setTokenGroups] = useState<Map<string, TokenGroup>>(
+    new Map(),
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadConsignments() {
       setIsLoading(true);
       const params = new URLSearchParams();
-      if (filters.chain !== "all") params.append("chain", filters.chain);
-      if (filters.isNegotiable !== "all")
-        params.append("isNegotiable", filters.isNegotiable);
+
+      // Add chains
+      filters.chains.forEach((chain) => params.append("chains", chain));
+
+      // Add negotiable types
+      filters.negotiableTypes.forEach((type) =>
+        params.append("negotiableTypes", type),
+      );
+
+      // Add fractionalized filter
+      if (filters.isFractionalized) {
+        params.append("isFractionalized", "true");
+      }
 
       const response = await fetch(`/api/consignments?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
-        const consignmentsList = data.consignments || [];
-        // Deduplicate by ID
-        const uniqueConsignments = Array.from(
-          new Map(consignmentsList.map((c: OTCConsignment) => [c.id, c])).values()
+        const consignmentsList = (data.consignments || []) as OTCConsignment[];
+
+        // Deduplicate consignments by ID
+        const uniqueConsignments: OTCConsignment[] = Array.from(
+          new Map(
+            consignmentsList.map((c) => [c.id, c]),
+          ).values(),
         );
-        
-        // Fetch token data for each consignment to enable search by name/symbol
-        const consignmentsWithTokens = await Promise.all(
-          uniqueConsignments.map(async (c) => {
-            const tokenResponse = await fetch(`/api/tokens/${c.tokenId}`);
-            const tokenData = await tokenResponse.json();
-            return {
-              ...c,
-              _token: tokenData.success ? tokenData.token : undefined,
-            };
-          })
-        );
-        
+
+        // Group consignments by tokenId
+        const grouped = new Map<string, TokenGroup>();
+        for (const consignment of uniqueConsignments) {
+          if (!grouped.has(consignment.tokenId)) {
+            grouped.set(consignment.tokenId, {
+              tokenId: consignment.tokenId,
+              token: null,
+              marketData: null,
+              consignments: [],
+            });
+          }
+          grouped.get(consignment.tokenId)!.consignments.push(consignment);
+        }
+
         console.log("[DealsGrid] Loaded consignments:", {
           total: consignmentsList.length,
           unique: uniqueConsignments.length,
-          ids: uniqueConsignments.map(c => c.id),
+          uniqueTokens: grouped.size,
         });
-        setConsignments(consignmentsWithTokens);
+
+        setTokenGroups(grouped);
       }
       setIsLoading(false);
     }
@@ -66,35 +108,31 @@ export function DealsGrid({ filters, searchQuery = "" }: DealsGridProps) {
     loadConsignments();
   }, [filters]);
 
-  // Filter consignments by search query (case-insensitive, search across tokenId, name, and symbol)
-  const filteredConsignments = consignments.filter((consignment) => {
+  // Filter token groups by search query
+  const filteredGroups = Array.from(tokenGroups.values()).filter((group) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    const tokenId = consignment.tokenId.toLowerCase();
-    const tokenName = consignment._token?.name?.toLowerCase() || "";
-    const tokenSymbol = consignment._token?.symbol?.toLowerCase() || "";
-    return tokenId.includes(query) || tokenName.includes(query) || tokenSymbol.includes(query);
+    return group.tokenId.toLowerCase().includes(query);
   });
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="space-y-6 pb-6">
+        {[1, 2, 3].map((i) => (
           <div
             key={i}
             className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 animate-pulse"
           >
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
               <div className="flex-1">
-                <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-24 mb-2"></div>
-                <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32"></div>
+                <div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-32 mb-2"></div>
+                <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-48"></div>
               </div>
             </div>
             <div className="space-y-3">
               <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-              <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4"></div>
-              <div className="h-10 bg-zinc-200 dark:bg-zinc-800 rounded mt-4"></div>
+              <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-5/6"></div>
             </div>
           </div>
         ))}
@@ -102,7 +140,7 @@ export function DealsGrid({ filters, searchQuery = "" }: DealsGridProps) {
     );
   }
 
-  if (filteredConsignments.length === 0 && searchQuery) {
+  if (filteredGroups.length === 0 && searchQuery) {
     return (
       <div className="text-center py-12">
         <svg
@@ -122,13 +160,13 @@ export function DealsGrid({ filters, searchQuery = "" }: DealsGridProps) {
           No results found
         </h3>
         <p className="text-zinc-600 dark:text-zinc-400">
-          No tokens match "{searchQuery}". Try a different search term.
+          No tokens match &quot;{searchQuery}&quot;. Try a different search term.
         </p>
       </div>
     );
   }
 
-  if (filteredConsignments.length === 0) {
+  if (filteredGroups.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-zinc-600 dark:text-zinc-400">
@@ -140,13 +178,10 @@ export function DealsGrid({ filters, searchQuery = "" }: DealsGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
-      {filteredConsignments.map((consignment) => (
-        <ConsignmentCard key={consignment.id} consignment={consignment} />
+    <div className="space-y-6 pb-6">
+      {filteredGroups.map((group) => (
+        <TokenGroupLoader key={group.tokenId} tokenGroup={group} />
       ))}
     </div>
   );
 }
-
-
-

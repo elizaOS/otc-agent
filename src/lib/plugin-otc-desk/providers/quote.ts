@@ -2,7 +2,7 @@ import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 import { IAgentRuntime, Memory, Provider, ProviderResult } from "@elizaos/core";
 import { agentRuntime } from "../../agent-runtime";
 import { walletToEntityId } from "../../entityId";
-import { formatElizaAmount } from "../services/priceFeed";
+import { formatTokenAmount } from "../services/priceFeed";
 import type { PaymentCurrency, QuoteMemory } from "../types";
 
 export const quoteProvider: Provider = {
@@ -35,7 +35,7 @@ export const quoteProvider: Provider = {
     const quoteService = runtime.getService<QuoteService>("QuoteService");
     if (!quoteService) {
       return {
-        text: `No active elizaOS quote. Offer them a deal on elizaOS tokens with a discount and lockup.`,
+        text: `No active quote. Offer them a deal on tokens with a discount and lockup.`,
       };
     }
 
@@ -47,18 +47,18 @@ export const quoteProvider: Provider = {
 
     if (!currentQuote) {
       return {
-        text: `No active elizaOS quote. Offer them a deal on elizaOS tokens with a discount and lockup.`,
+        text: `No active quote. Offer them a deal on tokens with a discount and lockup.`,
       };
     }
 
-    const formattedAmount = formatElizaAmount(currentQuote.tokenAmount);
+    const formattedAmount = formatTokenAmount(currentQuote.tokenAmount);
 
     return {
       text: `
 Current Agent Quote (ID: ${currentQuote.quoteId}):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 Amount: ${Number(currentQuote.tokenAmount) > 0 ? formattedAmount + " elizaOS" : "Choose amount at acceptance"}
-💰 Price per Token: Determined by Chainlink oracle on-chain at execution
+📊 Amount: ${Number(currentQuote.tokenAmount) > 0 ? formattedAmount + " tokens" : "Choose amount at acceptance"}
+💰 Price per Token: Determined by oracle on-chain at execution
 💵 Total Value: $${currentQuote.totalUsd.toFixed(2)} (estimated at creation)
 🎯 Discount: ${currentQuote.discountBps / 100}% (${currentQuote.discountBps} bps)
 ✨ Your Price: $${currentQuote.discountedUsd.toFixed(2)} (estimated at creation)
@@ -67,25 +67,22 @@ Current Agent Quote (ID: ${currentQuote.quoteId}):
 
 FAQ:
 - What is the minimum order size?
-We have a minimum order size of 1000 $elizaOS tokens.
+Minimum order size varies by listing. Check with individual token listings.
 
 - What is the maximum order size?
-We're capping it so we can have enough for everyone to try out the OTC agent, so only 100k $elizaOS tokens at a time for now.
+Maximum order size varies by token availability and listing constraints.
 
 - What is the maximum discount?
-Try us. Negotiate if you can :) Usually we're around 2-10% off but open to negotiation.
+Try us. Negotiate if you can :) Discounts typically range from 2-10% but are open to negotiation based on lockup duration.
 
 - What is the maximum lockup?
-For really deep discounts we usually do a discount up to 12 months (52 weeks).
+For deeper discounts, lockups can extend up to 12 months depending on the listing.
 
 - What is the minimum lockup?
-We're offering 1 week lockups for now.
+Minimum lockup periods start at 1 week, depending on the token listing.
 
 - How do I buy the tokens?
-You'll need ETH or USDC on Base.
-
-- Wait, the new $elizaOS token is on Base? Isn't $ai16z a Solana project?
-It's available on Base, Optimism, Arbitrum, Solana, Polygon and Ethereum mainnet.
+You'll need ETH or USDC on the appropriate network (Base, Ethereum, or SOL on Solana).
 
 - When do I get my tokens?
 You'll automatically receive your tokens when the lockup period ends.`.trim(),

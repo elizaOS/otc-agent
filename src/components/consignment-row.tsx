@@ -2,11 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import type {
-  OTCConsignment,
-  Token,
-} from "@/services/database";
+import type { OTCConsignment, Token } from "@/services/database";
 import { Button } from "./button";
+import { useOTC } from "@/hooks/contracts/useOTC";
+import { useAccount } from "wagmi";
 
 interface ConsignmentRowProps {
   consignment: OTCConsignment;
@@ -16,12 +15,17 @@ interface ConsignmentRowProps {
 export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
   const [token, setToken] = useState<Token | null>(null);
   const [dealCount, setDealCount] = useState<number>(0);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const fetchedTokenId = useRef<string | null>(null);
+  const { withdrawConsignment } = useOTC();
+  const { address } = useAccount();
 
   useEffect(() => {
     // Only fetch if tokenId changed
     if (fetchedTokenId.current === consignment.tokenId) return;
-    
+
     async function loadData() {
       fetchedTokenId.current = consignment.tokenId;
       const tokenRes = await fetch(`/api/tokens/${consignment.tokenId}`);
@@ -32,13 +36,21 @@ export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
       const remainingAmount = BigInt(consignment.remainingAmount);
       const soldAmount = totalAmount - remainingAmount;
       if (soldAmount > 0n && consignment.isFractionalized) {
-        const avgDealSize = BigInt(consignment.minDealAmount) + BigInt(consignment.maxDealAmount);
+        const avgDealSize =
+          BigInt(consignment.minDealAmount) + BigInt(consignment.maxDealAmount);
         const estimatedDeals = Number(soldAmount / (avgDealSize / 2n));
         setDealCount(Math.max(1, estimatedDeals));
       }
     }
     loadData();
-  }, [consignment.tokenId, consignment.totalAmount, consignment.remainingAmount, consignment.isFractionalized, consignment.minDealAmount, consignment.maxDealAmount]);
+  }, [
+    consignment.tokenId,
+    consignment.totalAmount,
+    consignment.remainingAmount,
+    consignment.isFractionalized,
+    consignment.minDealAmount,
+    consignment.maxDealAmount,
+  ]);
 
   if (!token) return null;
 
@@ -61,7 +73,7 @@ export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
         status: consignment.status === "active" ? "paused" : "active",
       }),
     });
-    
+
     // Refresh parent component state instead of full page reload
     if (onUpdate) {
       onUpdate();
@@ -69,15 +81,67 @@ export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
   };
 
   const handleWithdraw = async () => {
-    if (!confirm("Withdraw remaining tokens? This cannot be undone.")) return;
+    setWithdrawError(null);
+    setWithdrawTxHash(null);
 
-    await fetch(`/api/consignments/${consignment.id}`, {
-      method: "DELETE",
-    });
-    
-    // Refresh parent component state instead of full page reload
-    if (onUpdate) {
-      onUpdate();
+    if (!address) {
+      setWithdrawError("Please connect your wallet first");
+      return;
+    }
+
+    if (!consignment.contractConsignmentId) {
+      setWithdrawError("Consignment was not deployed on-chain. Nothing to withdraw.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Withdraw ${formatAmount(consignment.remainingAmount)} ${token?.symbol} from the smart contract?\n\nYou will pay the gas fee for this transaction. This cannot be undone.`,
+      )
+    )
+      return;
+
+    setIsWithdrawing(true);
+
+    try {
+      const contractConsignmentId = BigInt(consignment.contractConsignmentId);
+
+      // Execute on-chain withdrawal (user pays gas)
+      console.log("[ConsignmentRow] Withdrawing consignment:", contractConsignmentId.toString());
+      const txHash = await withdrawConsignment(contractConsignmentId);
+      setWithdrawTxHash(txHash as string);
+      console.log("[ConsignmentRow] Withdrawal tx submitted:", txHash);
+
+      // Update database status after successful on-chain withdrawal
+      const response = await fetch(`/api/consignments/${consignment.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        console.warn("[ConsignmentRow] Failed to update database, but withdrawal succeeded on-chain");
+        setWithdrawError("Withdrawal successful on-chain, but database update failed. Your tokens are in your wallet.");
+      }
+
+      // Refresh parent component state
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      // Show success message for 3 seconds before clearing
+      setTimeout(() => {
+        setWithdrawTxHash(null);
+      }, 5000);
+    } catch (error: unknown) {
+      console.error("[ConsignmentRow] Withdrawal failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
+      if (errorMessage.includes("rejected") || errorMessage.includes("denied")) {
+        setWithdrawError("Transaction was rejected. No changes were made.");
+      } else {
+        setWithdrawError(`Withdrawal failed: ${errorMessage}`);
+      }
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 
@@ -121,10 +185,22 @@ export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
           <Button
             color="red"
             onClick={handleWithdraw}
-            disabled={consignment.status === "withdrawn"}
+            disabled={
+              consignment.status === "withdrawn" ||
+              isWithdrawing ||
+              !address ||
+              !consignment.contractConsignmentId
+            }
             className="!py-2 !px-4 !text-xs bg-zinc-900 text-white"
+            title={
+              !consignment.contractConsignmentId
+                ? "Consignment not deployed on-chain"
+                : isWithdrawing
+                  ? "Withdrawing..."
+                  : "Withdraw remaining tokens"
+            }
           >
-            Withdraw
+            {isWithdrawing ? "Withdrawing..." : "Withdraw"}
           </Button>
         </div>
       </div>
@@ -155,6 +231,55 @@ export function ConsignmentRow({ consignment, onUpdate }: ConsignmentRowProps) {
           </div>
         </div>
       </div>
+
+      {/* Withdrawal Status */}
+      {(withdrawTxHash || withdrawError) && (
+        <div className="mb-3">
+          {withdrawTxHash && !withdrawError && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span className="text-sm font-medium">Withdrawal Successful</span>
+              </div>
+              <p className="text-xs text-green-700 dark:text-green-300 mt-1 break-all">
+                Tx: {withdrawTxHash}
+              </p>
+            </div>
+          )}
+          {withdrawError && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <svg
+                  className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-sm text-red-800 dark:text-red-200">{withdrawError}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-zinc-100 dark:bg-zinc-900 rounded-full h-2">
         <div

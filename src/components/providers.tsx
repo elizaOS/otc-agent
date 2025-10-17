@@ -32,7 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   if (!privyAppId) {
     throw new Error(
-      "NEXT_PUBLIC_PRIVY_APP_ID is required. Please add it to your .env.local file."
+      "NEXT_PUBLIC_PRIVY_APP_ID is required. Please add it to your .env.local file.",
     );
   }
 

@@ -76,11 +76,14 @@ export async function POST(request: NextRequest) {
     twitter,
   });
 
-  const isLocalTestnet = contractAddress.startsWith("0x5FbDB") || 
-                         contractAddress.startsWith("0x5fbdb") ||
-                         chain === "ethereum" && contractAddress.length === 42;
-  
-  if (!isLocalTestnet) {
+  const isLocalTestnet =
+    contractAddress.startsWith("0x5FbDB") ||
+    contractAddress.startsWith("0x5fbdb") ||
+    (chain === "ethereum" && contractAddress.length === 42);
+
+  const isSolanaWithoutKey = chain === "solana" && !process.env.BIRDEYE_API_KEY;
+
+  if (!isLocalTestnet && !isSolanaWithoutKey) {
     const marketDataService = new MarketDataService();
     await marketDataService.refreshTokenData(token.id, contractAddress, chain);
   } else {
