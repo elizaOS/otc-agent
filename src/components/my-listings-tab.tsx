@@ -1,8 +1,10 @@
 "use client";
 
+import React from "react";
 import { ConsignmentRow } from "./consignment-row";
 import { Button } from "./button";
 import { useMultiWallet } from "./multiwallet";
+import { EVMChainSelectorModal } from "./evm-chain-selector-modal";
 import type { OTCConsignment } from "@/services/database";
 
 interface MyListingsTabProps {
@@ -14,14 +16,13 @@ export function MyListingsTab({ listings, onRefresh }: MyListingsTabProps) {
   const {
     activeFamily,
     setActiveFamily,
-    login,
     connectSolanaWallet,
     isPhantomInstalled,
   } = useMultiWallet();
+  const [showEVMChainSelector, setShowEVMChainSelector] = React.useState(false);
 
-  const handleSwitchToBase = () => {
-    setActiveFamily("evm");
-    login();
+  const handleSwitchToEvm = () => {
+    setShowEVMChainSelector(true);
   };
 
   const handleSwitchToSolana = () => {
@@ -33,7 +34,7 @@ export function MyListingsTab({ listings, onRefresh }: MyListingsTabProps) {
     connectSolanaWallet();
   };
 
-  const networkName = activeFamily === "solana" ? "Solana" : "Base";
+  const networkName = activeFamily === "solana" ? "Solana" : "EVM";
   if (listings.length === 0) {
     return (
       <div className="text-center py-12">
@@ -67,10 +68,10 @@ export function MyListingsTab({ listings, onRefresh }: MyListingsTabProps) {
           <div className="flex gap-2">
             {activeFamily !== "evm" && (
               <button
-                onClick={handleSwitchToBase}
+                onClick={handleSwitchToEvm}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap"
               >
-                Switch to Base
+                Switch to EVM
               </button>
             )}
             {activeFamily !== "solana" && (
@@ -104,6 +105,11 @@ export function MyListingsTab({ listings, onRefresh }: MyListingsTabProps) {
           />
         ))}
       </div>
+
+      <EVMChainSelectorModal
+        isOpen={showEVMChainSelector}
+        onClose={() => setShowEVMChainSelector(false)}
+      />
     </div>
   );
 }

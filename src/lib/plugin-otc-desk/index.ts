@@ -819,7 +819,7 @@ const events = {
 };
 
 export const otcDeskPlugin: Plugin = {
-  name: "otc-desk",
+  name: "thedesk",
   description: "OTC Desk plugin for managing quotes and transactions",
   events,
   providers: [

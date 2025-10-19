@@ -35,7 +35,7 @@ npm run test:e2e
 ```
 
 This automatically:
-- ✅ Starts Hardhat node
+- ✅ Starts Anvil node
 - ✅ Deploys contracts
 - ✅ Starts Solana validator
 - ✅ Starts Next.js server
@@ -147,7 +147,7 @@ bun scripts/seed-tokens.ts
 
 **Solution**:
 ```bash
-pkill -9 -f "hardhat node"
+pkill -9 -f "anvil"
 pkill -9 -f "next dev"
 lsof -t -i:2222 | xargs kill -9
 lsof -t -i:8545 | xargs kill -9

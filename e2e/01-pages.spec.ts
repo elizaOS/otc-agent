@@ -29,8 +29,8 @@ test.describe('Page Load Tests', () => {
     const hasContent = await page.locator('h1, img[alt*="how"]').first().isVisible({ timeout: 10000 }).catch(() => false);
     expect(hasContent).toBe(true);
     
-    // Should show network selection cards (Base and Solana buttons)
-    await expect(page.getByRole('button', { name: /base/i })).toBeVisible({ timeout: 10000 });
+    // Should show network selection cards (EVM and Solana buttons)
+    await expect(page.getByRole('button', { name: /evm/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('button', { name: /solana/i })).toBeVisible({ timeout: 10000 });
   });
 

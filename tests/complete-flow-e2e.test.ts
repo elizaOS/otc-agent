@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createPublicClient, createWalletClient, http, type Address, type Abi, parseEther, formatEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { hardhat } from "viem/chains";
+import { localhost } from "viem/chains";
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -73,7 +73,7 @@ describe("Base (EVM) Complete Flow", () => {
 
     // Setup viem clients
     ctx.publicClient = createPublicClient({
-      chain: hardhat,
+      chain: localhost,
       transport: http(EVM_RPC),
     });
     
@@ -117,7 +117,7 @@ describe("Base (EVM) Complete Flow", () => {
     ctx.testAccount = privateKeyToAccount(deployment.testWalletPrivateKey as `0x${string}`);
     ctx.walletClient = createWalletClient({
       account: ctx.testAccount,
-      chain: hardhat,
+      chain: localhost,
       transport: http(EVM_RPC),
     });
 
@@ -245,7 +245,7 @@ describe("Base (EVM) Complete Flow", () => {
         }),
       });
       
-      console.log("   ✅ Time advanced");
+      console.log("   ✅ Time advanced via evm_increaseTime");
 
       // Claim tokens
       const { request: claimReq } = await ctx.publicClient.simulateContract({
@@ -465,7 +465,7 @@ describe("Base (EVM) Complete Flow", () => {
       const attackerAccount = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as `0x${string}`);
       const attackerClient = createWalletClient({
         account: attackerAccount,
-        chain: hardhat,
+        chain: localhost,
         transport: http(EVM_RPC),
       });
 

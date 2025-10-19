@@ -1,4 +1,4 @@
-import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
+import QuoteService from "@/lib/plugin-thedesk/services/quoteService";
 import { IAgentRuntime, Memory, Provider, ProviderResult } from "@elizaos/core";
 import { agentRuntime } from "../../agent-runtime";
 import { walletToEntityId } from "../../entityId";
@@ -82,7 +82,7 @@ For deeper discounts, lockups can extend up to 12 months depending on the listin
 Minimum lockup periods start at 1 week, depending on the token listing.
 
 - How do I buy the tokens?
-You'll need ETH or USDC on the appropriate network (Base, Ethereum, or SOL on Solana).
+You'll need ETH or USDC on the appropriate network (Base, BSC, Jeju, or Solana).
 
 - When do I get my tokens?
 You'll automatically receive your tokens when the lockup period ends.`.trim(),
@@ -213,18 +213,31 @@ export async function setUserQuote(
 }
 
 export async function deleteUserQuote(walletAddress: string): Promise<void> {
-  // In serverless, we can't delete from memory - just mark as expired in DB
-  console.log("[QuoteProvider] deleteUserQuote called for:", walletAddress);
-}
+  const normalized = walletAddress.toLowerCase();
+  const entityId = walletToEntityId(normalized);
 
-export async function loadActiveQuotes(): Promise<void> {
+  console.log("[deleteUserQuote] Deleting quote for wallet:", normalized);
+
   const runtime = await agentRuntime.getRuntime();
-  const quoteService = runtime.getService<QuoteService>(
-    QuoteService.serviceName,
-  );
+  const quote = await getUserQuote(walletAddress);
 
-  if (quoteService) {
-    const activeQuotes = await quoteService.getActiveQuotes();
-    console.log(`[QuoteProvider] Loaded ${activeQuotes.length} active quotes`);
+  if (!quote) {
+    console.log("[deleteUserQuote] No quote found to delete");
+    return;
   }
+
+  await runtime.deleteCache(`quote:${quote.quoteId}`);
+
+  const entityQuoteIds =
+    (await runtime.getCache<string[]>(`entity_quotes:${entityId}`)) ?? [];
+  const updatedEntityQuoteIds = entityQuoteIds.filter(
+    (id) => id !== quote.quoteId,
+  );
+  await runtime.setCache(`entity_quotes:${entityId}`, updatedEntityQuoteIds);
+
+  const allQuotes = (await runtime.getCache<string[]>("all_quotes")) ?? [];
+  const updatedAllQuotes = allQuotes.filter((id) => id !== quote.quoteId);
+  await runtime.setCache("all_quotes", updatedAllQuotes);
+
+  console.log("[deleteUserQuote] ✅ Quote deleted:", quote.quoteId);
 }

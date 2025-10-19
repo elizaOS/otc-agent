@@ -7,20 +7,12 @@ import {
   type Address,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { base, baseSepolia, hardhat } from "viem/chains";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { agentRuntime } from "@/lib/agent-runtime";
 import { parseOfferStruct } from "@/lib/otc-helpers";
+import { getChain, getRpcUrl } from "@/lib/getChain";
 import { promises as fs } from "fs";
 import path from "path";
-
-function getChain() {
-  const env = process.env.NODE_ENV;
-  const network = process.env.NETWORK || "hardhat";
-  if (env === "production") return base;
-  if (network === "base-sepolia") return baseSepolia;
-  return hardhat;
-}
 
 export async function POST(request: NextRequest) {
   // Resolve OTC address (env first, then devnet file fallback)
@@ -222,7 +214,8 @@ export async function POST(request: NextRequest) {
   }
 
   const chain = getChain();
-  const publicClient = createPublicClient({ chain, transport: http() });
+  const rpcUrl = getRpcUrl();
+  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
   const abi = otcArtifact.abi as Abi;
 
   // Resolve approver account: prefer PK; else use testWalletPrivateKey from deployment; else impersonate
@@ -235,7 +228,7 @@ export async function POST(request: NextRequest) {
     walletClient = createWalletClient({
       account,
       chain,
-      transport: http(),
+      transport: http(rpcUrl),
     });
     approverAddr = account.address;
   } else {
@@ -252,7 +245,7 @@ export async function POST(request: NextRequest) {
       walletClient = createWalletClient({
         account,
         chain,
-        transport: http(),
+        transport: http(rpcUrl),
       });
       approverAddr = account.address;
       console.log(
@@ -263,20 +256,20 @@ export async function POST(request: NextRequest) {
       approverAddr = json.accounts.approver as Address;
       if (!approverAddr) throw new Error("approver address not found");
 
-      // Impersonate approver on hardhat
+      // Impersonate approver on Anvil
       await fetch("http://127.0.0.1:8545", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          method: "hardhat_impersonateAccount",
+          method: "anvil_impersonateAccount",
           params: [approverAddr],
           id: 1,
         }),
       });
       account = approverAddr;
-      walletClient = createWalletClient({ chain, transport: http() });
-      console.log("[Approve API] Impersonating approver account on Hardhat", {
+      walletClient = createWalletClient({ chain, transport: http(rpcUrl) });
+      console.log("[Approve API] Impersonating approver account on Anvil", {
         address: approverAddr,
       });
     }
@@ -310,7 +303,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0",
-        method: "hardhat_impersonateAccount",
+        method: "anvil_impersonateAccount",
         params: [ownerAddr],
         id: 1,
       }),
@@ -323,7 +316,7 @@ export async function POST(request: NextRequest) {
       args: [1n],
       account: ownerAddr,
     });
-    await createWalletClient({ chain, transport: http() }).writeContract({
+    await createWalletClient({ chain, transport: http(rpcUrl) }).writeContract({
       ...setReq,
       account: ownerAddr,
     });
@@ -502,7 +495,7 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          method: "hardhat_impersonateAccount",
+          method: "anvil_impersonateAccount",
           params: [addr],
           id: 1,
         }),
@@ -517,7 +510,7 @@ export async function POST(request: NextRequest) {
       });
       await createWalletClient({
         chain,
-        transport: http(),
+        transport: http(rpcUrl),
       }).writeContract({ ...req2, account: addr });
 
       // Re-read state after each attempt

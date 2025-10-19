@@ -9,7 +9,7 @@ interface StepProps {
   onBack: () => void;
   requiredChain?: "evm" | "solana" | null;
   isConnectedToRequiredChain?: boolean;
-  onConnectBase?: () => void;
+  onConnectEvm?: () => void;
   onConnectSolana?: () => void;
 }
 
@@ -20,7 +20,7 @@ export function NegotiationParamsStep({
   onBack,
   requiredChain,
   isConnectedToRequiredChain,
-  onConnectBase,
+  onConnectEvm,
   onConnectSolana,
 }: StepProps) {
   const minDiscountInvalid = !formData.minDiscountBps || formData.minDiscountBps <= 0;
@@ -209,7 +209,7 @@ export function NegotiationParamsStep({
         </Button>
         {formData.tokenId && requiredChain && !isConnectedToRequiredChain ? (
           <Button
-            onClick={requiredChain === "solana" ? onConnectSolana : onConnectBase}
+            onClick={requiredChain === "solana" ? onConnectSolana : onConnectEvm}
             disabled={
               !formData.minDiscountBps ||
               !formData.maxDiscountBps ||
@@ -221,10 +221,10 @@ export function NegotiationParamsStep({
             className={`flex-1 !py-2 text-white rounded-lg ${
               requiredChain === "solana"
                 ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:opacity-90"
-                : "bg-[#0052ff] hover:bg-[#0047e5]"
+                : "bg-gradient-to-br from-blue-600 to-blue-800 hover:opacity-90"
             }`}
           >
-            Connect to {requiredChain === "solana" ? "Solana" : "Base"}
+            Connect to {requiredChain === "solana" ? "Solana" : "EVM"}
           </Button>
         ) : (
           <Button

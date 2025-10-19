@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  outputFileTracingRoot: '/Users/shawwalters/jeju',
   serverExternalPackages: ['handlebars', '@elizaos/plugin-sql', '@elizaos/core'],
   experimental: {
     inlineCss: true,

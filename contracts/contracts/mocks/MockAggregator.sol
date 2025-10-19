@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.26;
 
-contract MockAggregatorV3 {
+import {IAggregatorV3} from "../interfaces/IAggregatorV3.sol";
+
+contract MockAggregatorV3 is IAggregatorV3 {
   int256 private _answer;
   uint8 private _decimals;
   uint80 private _roundId;

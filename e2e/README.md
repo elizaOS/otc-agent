@@ -57,7 +57,7 @@ This project uses **Playwright** for comprehensive E2E testing, including web3 w
    ```
 
 3. Ensure services can start:
-   - Hardhat node (port 8545)
+   - Anvil node (port 8545)
    - Solana validator (port 8899) - optional
    - Next.js dev server (port 2222)
 
@@ -68,7 +68,7 @@ npm run test:e2e
 ```
 
 This will:
-1. Start all required services (Hardhat, Solana, Next.js)
+1. Start all required services (Anvil, Solana, Next.js)
 2. Deploy contracts
 3. Seed test data
 4. Run all E2E tests
@@ -112,8 +112,8 @@ npm run test:e2e:report
 
 - **Tool**: Dappwright (MetaMask automation)
 - **Wallet**: MetaMask extension with test seed phrase
-- **Network**: Hardhat local (chain ID 31337)
-- **Test Account**: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` (Hardhat #0)
+- **Network**: Anvil local (chain ID 31337)
+- **Test Account**: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` (Anvil #0)
 
 **Capabilities:**
 - ✅ Connect wallet
@@ -175,7 +175,7 @@ Required in CI:
 ```bash
 NEXT_PUBLIC_E2E_TEST=1
 NODE_ENV=development
-NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
+NEXT_PUBLIC_RPC_URL=http://127.0.0.1:9545  # Jeju L2 (STATIC)
 NEXT_PUBLIC_SOLANA_RPC_URL=http://127.0.0.1:8899
 ```
 
@@ -190,18 +190,18 @@ NEXT_PUBLIC_SOLANA_RPC_URL=http://127.0.0.1:8899
 2. Increase timeout in config
 3. Run `npx playwright install chromium --force`
 
-### Hardhat Node Not Starting
+### Anvil Node Not Starting
 
 **Symptom**: Contract deployment fails
 
 **Solution**:
 ```bash
 # Kill existing processes
-pkill -9 -f "hardhat node"
+pkill -9 -f "anvil"
 lsof -t -i:8545 | xargs kill -9
 
 # Start fresh
-cd contracts && npx hardhat node
+./scripts/start-anvil.sh
 ```
 
 ### Tests Fail Due to Missing Agent

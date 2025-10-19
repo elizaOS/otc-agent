@@ -1,84 +1,19 @@
 // Database service layer using Eliza runtime services
 
 import { agentRuntime } from "@/lib/agent-runtime";
-import type QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
+import type QuoteService from "@/lib/plugin-thedesk/services/quoteService";
 import type {
   PaymentCurrency,
   QuoteMemory as Quote,
   QuoteStatus,
-} from "@/lib/plugin-otc-desk/types";
-import type { Chain } from "@/config/chains";
+  Token,
+  TokenMarketData,
+  OTCConsignment,
+  ConsignmentDeal,
+  Chain,
+} from "@/types";
 
-export type { PaymentCurrency, QuoteStatus, Chain };
-
-export interface Token {
-  id: string;
-  symbol: string;
-  name: string;
-  contractAddress: string;
-  chain: Chain;
-  decimals: number;
-  logoUrl: string;
-  description: string;
-  website?: string;
-  twitter?: string;
-  isActive: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface TokenMarketData {
-  tokenId: string;
-  priceUsd: number;
-  marketCap: number;
-  volume24h: number;
-  priceChange24h: number;
-  liquidity: number;
-  lastUpdated: number;
-}
-
-export interface OTCConsignment {
-  id: string;
-  tokenId: string;
-  consignerAddress: string;
-  consignerEntityId: string;
-  totalAmount: string;
-  remainingAmount: string;
-  isNegotiable: boolean;
-  fixedDiscountBps?: number;
-  fixedLockupDays?: number;
-  minDiscountBps: number;
-  maxDiscountBps: number;
-  minLockupDays: number;
-  maxLockupDays: number;
-  minDealAmount: string;
-  maxDealAmount: string;
-  isFractionalized: boolean;
-  isPrivate: boolean;
-  allowedBuyers?: string[];
-  maxPriceVolatilityBps: number;
-  maxTimeToExecuteSeconds: number;
-  status: "active" | "paused" | "depleted" | "withdrawn";
-  contractConsignmentId?: string;
-  chain: Chain;
-  createdAt: number;
-  updatedAt: number;
-  lastDealAt?: number;
-}
-
-export interface ConsignmentDeal {
-  id: string;
-  consignmentId: string;
-  quoteId: string;
-  tokenId: string;
-  buyerAddress: string;
-  amount: string;
-  discountBps: number;
-  lockupDays: number;
-  executedAt: number;
-  offerId?: string;
-  status: "pending" | "executed" | "failed";
-}
+export type { PaymentCurrency, QuoteStatus, Chain, Token, TokenMarketData, OTCConsignment, ConsignmentDeal };
 
 export class QuoteDB {
   static async createQuote(data: {

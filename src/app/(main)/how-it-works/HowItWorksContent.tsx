@@ -6,31 +6,30 @@ import { useRouter } from "next/navigation";
 import { useMultiWallet } from "@/components/multiwallet";
 import { useCallback, useState } from "react";
 import { Dialog } from "@/components/dialog";
-import { BaseLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMChainSelectorModal } from "@/components/evm-chain-selector-modal";
 
 export default function HowItWorksContent() {
   const router = useRouter();
   const {
     isConnected,
     setActiveFamily,
-    login,
     connectSolanaWallet,
     isPhantomInstalled,
   } = useMultiWallet();
   const [showNetworkDialog, setShowNetworkDialog] = useState(false);
+  const [showEVMChainSelector, setShowEVMChainSelector] = useState(false);
 
   const handleConnectWallet = useCallback(() => {
     if (!isConnected) {
       setShowNetworkDialog(true);
     }
-    // If connected, do nothing
   }, [isConnected]);
 
   const handleConnectEvm = useCallback(() => {
     setShowNetworkDialog(false);
-    setActiveFamily("evm");
-    login();
-  }, [setActiveFamily, login]);
+    setShowEVMChainSelector(true);
+  }, []);
 
   const handleConnectSolana = useCallback(() => {
     if (!isPhantomInstalled) {
@@ -147,9 +146,10 @@ export default function HowItWorksContent() {
               >
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <BaseLogo className="w-10 h-10 sm:w-12 sm:h-12" />
+                    <EVMLogo className="w-10 h-10 sm:w-12 sm:h-12" />
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold">Base</div>
+                  <div className="text-2xl sm:text-3xl font-bold">EVM</div>
+                  <div className="text-xs text-white/70">Base, BSC, Jeju</div>
                 </div>
               </button>
               <button
@@ -168,6 +168,11 @@ export default function HowItWorksContent() {
           </div>
         </div>
       </Dialog>
+
+      <EVMChainSelectorModal
+        isOpen={showEVMChainSelector}
+        onClose={() => setShowEVMChainSelector(false)}
+      />
     </div>
   );
 }

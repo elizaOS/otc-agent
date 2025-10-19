@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useMultiWallet } from "@/components/multiwallet";
+import { EVMChainSelectorModal } from "@/components/evm-chain-selector-modal";
 
 const TokenSelectionStep = dynamic(
   () =>
@@ -45,12 +46,12 @@ export default function ConsignPageClient() {
     isConnected,
     activeFamily,
     setActiveFamily,
-    login,
     connectSolanaWallet,
     isPhantomInstalled,
   } = useMultiWallet();
   
   const [step, setStep] = useState(1);
+  const [showEVMChainSelector, setShowEVMChainSelector] = React.useState(false);
   
   const [formData, setFormData] = useState({
     tokenId: "",
@@ -93,11 +94,8 @@ export default function ConsignPageClient() {
     return null;
   };
 
-  const handleConnectBase = () => {
-    setActiveFamily("evm");
-    if (!isConnected) {
-      login();
-    }
+  const handleConnectEvm = () => {
+    setShowEVMChainSelector(true);
   };
 
   const handleConnectSolana = () => {
@@ -196,12 +194,17 @@ export default function ConsignPageClient() {
               onBack={handleBack}
               requiredChain={requiredChain}
               isConnectedToRequiredChain={isConnectedToRequiredChain}
-              onConnectBase={handleConnectBase}
+              onConnectEvm={handleConnectEvm}
               onConnectSolana={handleConnectSolana}
             />
           )}
         </div>
       </div>
+
+      <EVMChainSelectorModal
+        isOpen={showEVMChainSelector}
+        onClose={() => setShowEVMChainSelector(false)}
+      />
     </main>
   );
 }

@@ -6,26 +6,13 @@
  */
 
 import { createPublicClient, http, type Address, type Abi } from "viem";
-import { hardhat, base, baseSepolia } from "viem/chains";
+import type { Offer } from "@/types";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { QuoteDB } from "./database";
+import { getChain, getRpcUrl } from "@/lib/getChain";
 
-interface ContractOffer {
-  beneficiary: Address;
-  tokenAmount: bigint;
-  discountBps: number;
-  createdAt: bigint;
-  unlockTime: bigint;
-  priceUsdPerToken: bigint;
-  ethUsdPrice: bigint;
-  currency: number;
-  approved: boolean;
-  paid: boolean;
-  fulfilled: boolean;
-  cancelled: boolean;
-  payer: Address;
-  amountPaid: bigint;
-}
+// ContractOffer is same as Offer type
+type ContractOffer = Offer;
 
 export class ReconciliationService {
   private client: any; // PublicClient type causes "excessively deep" TypeScript error
@@ -33,18 +20,11 @@ export class ReconciliationService {
   private abi: Abi;
 
   constructor() {
-    // Determine chain
-    const env = process.env.NODE_ENV;
-    const network = process.env.NETWORK || "hardhat";
-    const chain =
-      env === "production"
-        ? base
-        : network === "base-sepolia"
-          ? baseSepolia
-          : hardhat;
+    // Get chain and RPC URL using centralized logic
+    const chain = getChain();
+    const rpcUrl = getRpcUrl();
 
     // Create public client
-    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
     this.client = createPublicClient({
       chain,
       transport: http(rpcUrl),
@@ -100,12 +80,12 @@ export class ReconciliationService {
     return {
       beneficiary,
       tokenAmount,
-      discountBps: Number(discountBps),
+      discountBps,
       createdAt,
       unlockTime,
       priceUsdPerToken,
       ethUsdPrice,
-      currency: Number(currency),
+      currency,
       approved,
       paid,
       fulfilled,

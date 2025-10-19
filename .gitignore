@@ -47,3 +47,5 @@ next-env.d.ts
 # test artifacts
 test-*.log
 dev-*.log
+solana/otc-program/test-ledger/
+solana/otc-program/target/

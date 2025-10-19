@@ -8,11 +8,13 @@ import {
   useWriteContract,
   useChainId,
   useBalance,
+  usePublicClient,
 } from "wagmi";
-import { hardhat } from "wagmi/chains";
-import { createPublicClient, http, pad, keccak256, stringToBytes, decodeEventLog } from "viem";
+import { keccak256, stringToBytes, decodeEventLog } from "viem";
 import type { Abi, Address } from "viem";
+import type { Offer, ConsignmentParams, ConsignmentCreationResult } from "@/types";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
+
 const erc20Abi = [
   {
     type: "function",
@@ -39,23 +41,6 @@ const erc20Abi = [
     outputs: [{ name: "", type: "bool" }],
   },
 ] as unknown as Abi;
-
-type Offer = {
-  beneficiary: Address;
-  tokenAmount: bigint;
-  discountBps: bigint;
-  createdAt: bigint;
-  unlockTime: bigint;
-  priceUsdPerToken: bigint; // 8d
-  ethUsdPrice: bigint; // 8d
-  currency: number; // 0 eth, 1 usdc
-  approved: boolean;
-  paid: boolean;
-  fulfilled: boolean;
-  cancelled: boolean;
-  payer: Address;
-  amountPaid: bigint;
-};
 
 export function useOTC(): {
   otcAddress: Address | undefined;
@@ -91,24 +76,7 @@ export function useOTC(): {
   approveUsdc: (amount: bigint) => Promise<unknown>;
   emergencyRefund: (offerId: bigint) => Promise<unknown>;
   withdrawConsignment: (consignmentId: bigint) => Promise<unknown>;
-  createConsignmentOnChain: (params: {
-    tokenId: string;
-    amount: bigint;
-    isNegotiable: boolean;
-    fixedDiscountBps: number;
-    fixedLockupDays: number;
-    minDiscountBps: number;
-    maxDiscountBps: number;
-    minLockupDays: number;
-    maxLockupDays: number;
-    minDealAmount: bigint;
-    maxDealAmount: bigint;
-    isFractionalized: boolean;
-    isPrivate: boolean;
-    maxPriceVolatilityBps: number;
-    maxTimeToExecute: number;
-    gasDeposit: bigint;
-  }) => Promise<{ txHash: `0x${string}`; consignmentId: bigint }>;
+  createConsignmentOnChain: (params: ConsignmentParams) => Promise<ConsignmentCreationResult>;
   approveToken: (tokenAddress: Address, amount: bigint) => Promise<unknown>;
   getTokenAddress: (tokenId: string) => Promise<Address>;
   getRequiredGasDeposit: () => Promise<bigint>;
@@ -124,16 +92,8 @@ export function useOTC(): {
   );
   const abi = otcArtifact.abi as Abi;
 
-  // Create public client for reading contract
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
-  const publicClient = useMemo(
-    () =>
-      createPublicClient({
-        chain: hardhat,
-        transport: http(rpcUrl),
-      }),
-    [rpcUrl],
-  );
+  // Use wagmi's public client which automatically handles all configured chains
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     if (!otcAddress && typeof window !== "undefined") {
@@ -149,43 +109,41 @@ export function useOTC(): {
     }
   }, [otcAddress]);
 
-  const enabled =
-    Boolean(otcAddress) &&
-    (chainId === hardhat.id || process.env.NODE_ENV !== "production");
+  const enabled = Boolean(otcAddress);
 
   const availableTokensRes = useReadContract({
     address: otcAddress,
     abi,
     functionName: "availableTokenInventory",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const minUsdRes = useReadContract({
     address: otcAddress,
     abi,
     functionName: "minUsdAmount",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const maxTokenRes = useReadContract({
     address: otcAddress,
     abi,
     functionName: "maxTokenPerOrder",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const expiryRes = useReadContract({
     address: otcAddress,
     abi,
     functionName: "quoteExpirySeconds",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const unlockDelayRes = useReadContract({
     address: otcAddress,
     abi,
     functionName: "defaultUnlockDelaySeconds",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
 
@@ -193,7 +151,7 @@ export function useOTC(): {
     address: otcAddress,
     abi,
     functionName: "agent",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const approverMappingRes = useReadContract({
@@ -201,7 +159,7 @@ export function useOTC(): {
     abi,
     functionName: "isApprover",
     args: [account as Address],
-    chainId: hardhat.id,
+    chainId,
     query: { enabled: enabled && Boolean(account) },
   });
 
@@ -210,7 +168,7 @@ export function useOTC(): {
     abi,
     functionName: "getOffersForBeneficiary",
     args: [account as Address],
-    chainId: hardhat.id,
+    chainId,
     query: {
       enabled: enabled && Boolean(account),
       refetchInterval: 2000,
@@ -233,7 +191,7 @@ export function useOTC(): {
     abi,
     functionName: "offers" as const,
     args: [id] as const,
-    chainId: hardhat.id,
+    chainId,
   }));
 
   const myOffersRes = useReadContracts({
@@ -250,7 +208,7 @@ export function useOTC(): {
     address: otcAddress,
     abi,
     functionName: "getOpenOfferIds",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   // Using type assertion to avoid deep type instantiation issue
@@ -260,7 +218,7 @@ export function useOTC(): {
     abi,
     functionName: "offers" as const,
     args: [id] as const,
-    chainId: hardhat.id,
+    chainId,
   }));
 
   const openOffersRes = useReadContracts({
@@ -345,7 +303,7 @@ export function useOTC(): {
     address: otcAddress,
     abi,
     functionName: "usdc",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
   const usdcAddress = (usdcAddressRes.data as Address | undefined) ?? undefined;
@@ -354,12 +312,12 @@ export function useOTC(): {
     abi: erc20Abi,
     functionName: "balanceOf",
     args: [otcAddress as Address],
-    chainId: hardhat.id,
+    chainId,
     query: { enabled: enabled && Boolean(usdcAddress) && Boolean(otcAddress) },
   });
   const ethBalRes = useBalance({
     address: otcAddress as Address,
-    chainId: hardhat.id,
+    chainId,
     query: { enabled: enabled && Boolean(otcAddress) },
   });
 
@@ -396,24 +354,7 @@ export function useOTC(): {
     } as any);
   }
 
-  async function createConsignmentOnChain(params: {
-    tokenId: string;
-    amount: bigint;
-    isNegotiable: boolean;
-    fixedDiscountBps: number;
-    fixedLockupDays: number;
-    minDiscountBps: number;
-    maxDiscountBps: number;
-    minLockupDays: number;
-    maxLockupDays: number;
-    minDealAmount: bigint;
-    maxDealAmount: bigint;
-    isFractionalized: boolean;
-    isPrivate: boolean;
-    maxPriceVolatilityBps: number;
-    maxTimeToExecute: number;
-    gasDeposit: bigint;
-  }): Promise<{ txHash: `0x${string}`; consignmentId: bigint }> {
+  async function createConsignmentOnChain(params: ConsignmentParams): Promise<ConsignmentCreationResult> {
     if (!otcAddress) throw new Error("No OTC address");
     if (!account) throw new Error("No wallet connected");
     
@@ -568,7 +509,7 @@ export function useOTC(): {
     address: otcAddress,
     abi,
     functionName: "emergencyRefundsEnabled",
-    chainId: hardhat.id,
+    chainId,
     query: { enabled },
   });
 

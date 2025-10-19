@@ -53,7 +53,7 @@ test.describe('Keyboard Navigation', () => {
     await page.waitForTimeout(500);
     
     // Modal should close
-    const modalClosed = !await page.getByRole('button', { name: /base/i }).isVisible().catch(() => true);
+    const modalClosed = !await page.getByRole('button', { name: /evm|solana/i }).isVisible().catch(() => true);
     expect(modalClosed).toBe(true);
   });
 

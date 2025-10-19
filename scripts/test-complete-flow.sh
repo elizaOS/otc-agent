@@ -24,9 +24,9 @@ cleanup() {
   echo -e "${YELLOW}🧹 Cleaning up...${NC}"
   
   # Kill background processes
-  if [ ! -z "$HARDHAT_PID" ]; then
-    kill $HARDHAT_PID 2>/dev/null || true
-    echo "  ✓ Stopped Hardhat node"
+  if [ ! -z "$ANVIL_PID" ]; then
+    kill $ANVIL_PID 2>/dev/null || true
+    echo "  ✓ Stopped Anvil node"
   fi
   
   if [ ! -z "$SOLANA_PID" ]; then
@@ -47,10 +47,10 @@ trap cleanup EXIT
 
 # Check if already running
 if lsof -Pi :8545 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-  echo -e "${YELLOW}⚠️  Hardhat already running on port 8545${NC}"
-  HARDHAT_RUNNING=true
+  echo -e "${YELLOW}⚠️  Anvil already running on port 8545${NC}"
+  ANVIL_RUNNING=true
 else
-  HARDHAT_RUNNING=false
+  ANVIL_RUNNING=false
 fi
 
 if lsof -Pi :2222 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
@@ -60,20 +60,19 @@ else
   SERVER_RUNNING=false
 fi
 
-# Start Hardhat if not running
-if [ "$HARDHAT_RUNNING" = false ]; then
-  echo -e "${BLUE}1️⃣  Starting Hardhat node...${NC}"
-  cd contracts && npx hardhat node > /tmp/hardhat-test.log 2>&1 &
-  HARDHAT_PID=$!
-  cd ..
+# Start Anvil if not running
+if [ "$ANVIL_RUNNING" = false ]; then
+  echo -e "${BLUE}1️⃣  Starting Anvil node...${NC}"
+  ./scripts/start-anvil.sh > /tmp/anvil-test.log 2>&1 &
+  ANVIL_PID=$!
   sleep 3
-  echo "  ✅ Hardhat started (PID: $HARDHAT_PID)"
+  echo "  ✅ Anvil started (PID: $ANVIL_PID)"
 fi
 
 # Deploy contracts
 echo ""
 echo -e "${BLUE}2️⃣  Deploying contracts...${NC}"
-cd contracts && npm run deploy:eliza > /tmp/deploy-test.log 2>&1
+cd contracts && bun run deploy:eliza > /tmp/deploy-test.log 2>&1
 cd ..
 echo "  ✅ Contracts deployed"
 

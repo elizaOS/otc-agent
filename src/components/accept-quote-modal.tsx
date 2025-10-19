@@ -3,7 +3,8 @@
 import { Button } from "@/components/button";
 import { Dialog } from "@/components/dialog";
 import { useMultiWallet } from "@/components/multiwallet";
-import { BaseLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMChainSelectorModal } from "@/components/evm-chain-selector-modal";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { useOTC } from "@/hooks/contracts/useOTC";
 import type { OTCQuote } from "@/utils/xml-parser";
@@ -20,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Abi } from "viem";
 import { createPublicClient, http } from "viem";
-import { base, hardhat } from "viem/chains";
+import { base } from "viem/chains";
 import { useAccount, useBalance } from "wagmi";
 import { useTransactionErrorHandler } from "@/hooks/useTransactionErrorHandler";
 
@@ -55,7 +56,6 @@ export function AcceptQuoteModal({
     solanaWallet,
     solanaPublicKey,
     setActiveFamily,
-    login,
     connectSolanaWallet,
     isPhantomInstalled,
   } = useMultiWallet();
@@ -64,7 +64,7 @@ export function AcceptQuoteModal({
   const quoteChain = initialQuote?.tokenChain;
   const isChainMismatch = quoteChain ? (
     (quoteChain === "solana" && activeFamily !== "solana") ||
-    ((quoteChain === "base" || quoteChain === "ethereum") && activeFamily !== "evm")
+    ((quoteChain === "base" || quoteChain === "bsc" || quoteChain === "jeju" || quoteChain === "ethereum") && activeFamily !== "evm")
   ) : false;
   const router = useRouter();
   const {
@@ -84,14 +84,14 @@ export function AcceptQuoteModal({
     "http://127.0.0.1:8545";
 
   // CRITICAL: publicClient chain must match where contract is deployed, NOT wallet chain
-  // If RPC is localhost, we're reading from Hardhat regardless of wallet network
+  // If RPC is localhost, we're reading from Anvil regardless of wallet network
   const isLocalRpc = useMemo(
     () => /localhost|127\.0\.0\.1/.test(rpcUrl),
     [rpcUrl],
   );
 
-  // Always use hardhat chain for localhost RPC
-  const readChain = isLocalRpc ? hardhat : base;
+  // Always use localhost chain for local RPC (Anvil/Jeju Localnet)
+  const readChain = isLocalRpc ? { id: 31337, name: 'Localhost', network: 'localhost', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [rpcUrl] } } } : base;
 
   const publicClient = useMemo(
     () => createPublicClient({ chain: readChain, transport: http(rpcUrl) }),
@@ -117,6 +117,7 @@ export function AcceptQuoteModal({
   const [requireApprover, setRequireApprover] = useState(false);
   const { handleTransactionError } = useTransactionErrorHandler();
   const [contractValid, setContractValid] = useState(false);
+  const [showEVMChainSelector, setShowEVMChainSelector] = useState(false);
   const isSolanaActive = activeFamily === "solana";
   const SOLANA_RPC =
     (process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string | undefined) ||
@@ -185,11 +186,11 @@ export function AcceptQuoteModal({
       if (!code || code === "0x") {
         console.error(
           `[AcceptQuote] No contract at ${otcAddress} on ${readChain.name}. ` +
-            `Ensure Hardhat node is running and contracts are deployed.`,
+            `Ensure Anvil node is running and contracts are deployed.`,
         );
         setContractValid(false);
         setError(
-          "Contract not found. Ensure Hardhat node is running and contracts are deployed.",
+          "Contract not found. Ensure Anvil node is running and contracts are deployed.",
         );
         return;
       }
@@ -380,7 +381,7 @@ export function AcceptQuoteModal({
     // Block if contract isn't valid (EVM only)
     if (!isSolanaActive && !contractValid) {
       setError(
-        "Contract not available. Please ensure Hardhat node is running and contracts are deployed.",
+        "Contract not available. Please ensure Anvil node is running and contracts are deployed.",
       );
       console.error("[AcceptQuote] Blocked transaction - contract not valid:", {
         otcAddress,
@@ -425,8 +426,8 @@ export function AcceptQuoteModal({
 
     // SAFETY: Block execution if chain mismatch
     if (isChainMismatch) {
-      const requiredChain = quoteChain === "solana" ? "Solana" : "Base";
-      const currentChain = activeFamily === "solana" ? "Solana" : "Base";
+      const requiredChain = quoteChain === "solana" ? "Solana" : "EVM";
+      const currentChain = activeFamily === "solana" ? "Solana" : "EVM";
       throw new Error(
         `Chain mismatch: This quote requires ${requiredChain} but you're connected to ${currentChain}. Please switch networks.`
       );
@@ -886,9 +887,8 @@ export function AcceptQuoteModal({
   };
 
   const handleConnectEvm = () => {
-    console.log("[AcceptQuote] Connecting to Base/EVM...");
-    setActiveFamily("evm");
-    login();
+    console.log("[AcceptQuote] Opening EVM chain selector...");
+    setShowEVMChainSelector(true);
   };
 
   const handleConnectSolana = () => {
@@ -926,6 +926,7 @@ export function AcceptQuoteModal({
   }, []);
 
   return (
+    <>
     <Dialog
       open={isOpen}
       onClose={onClose}
@@ -947,11 +948,11 @@ export function AcceptQuoteModal({
                 <p className="text-xs text-zinc-300 mb-3">
                   This quote is for a{" "}
                   <span className="font-semibold">
-                    {quoteChain === "solana" ? "Solana" : "Base"}
+                    {quoteChain === "solana" ? "Solana" : "EVM"}
                   </span>{" "}
                   token, but you&apos;re connected to{" "}
                   <span className="font-semibold">
-                    {activeFamily === "solana" ? "Solana" : "Base"}
+                    {activeFamily === "solana" ? "Solana" : "EVM"}
                   </span>
                   . Please switch networks to continue.
                 </p>
@@ -969,11 +970,11 @@ export function AcceptQuoteModal({
                   ) : (
                     <Button
                       onClick={handleConnectEvm}
-                      className="!h-8 !px-3 !text-xs bg-[#0052ff] hover:bg-[#0047e5]"
+                      className="!h-8 !px-3 !text-xs bg-gradient-to-br from-blue-600 to-blue-800 hover:brightness-110"
                     >
                       <div className="flex items-center gap-2">
-                        <BaseLogo className="w-4 h-4" />
-                        Switch to Base
+                        <EVMLogo className="w-4 h-4" />
+                        Switch to EVM
                       </div>
                     </Button>
                   )}
@@ -1150,13 +1151,14 @@ export function AcceptQuoteModal({
                         onClick={handleConnectEvm}
                         className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 focus:ring-offset-zinc-900"
                       >
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                            <BaseLogo className="w-8 h-8 sm:w-10 sm:h-10" />
-                          </div>
-                          <div className="text-xl sm:text-2xl font-bold">Base</div>
-                        </div>
-                      </button>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <EVMLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                      </div>
+                      <div className="text-xl sm:text-2xl font-bold">EVM</div>
+                      <div className="text-xs text-white/70">Base, BSC, Jeju</div>
+                    </div>
+                  </button>
                       <button
                         type="button"
                         onClick={handleConnectSolana}
@@ -1204,7 +1206,7 @@ export function AcceptQuoteModal({
               disabled={
                 Boolean(validationError) || insufficientFunds || isProcessing || isChainMismatch
               }
-              title={isChainMismatch ? `Switch to ${quoteChain === "solana" ? "Solana" : "Base"} first` : undefined}
+              title={isChainMismatch ? `Switch to ${quoteChain === "solana" ? "Solana" : "EVM"} first` : undefined}
             >
               <div className="px-4 py-2">
                 {isSolanaActive ? "Buy Now" : "Buy Now"}
@@ -1274,5 +1276,11 @@ export function AcceptQuoteModal({
         )}
       </div>
     </Dialog>
+    
+    <EVMChainSelectorModal
+      isOpen={showEVMChainSelector}
+      onClose={() => setShowEVMChainSelector(false)}
+    />
+    </>
   );
 }

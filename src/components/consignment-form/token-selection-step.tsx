@@ -6,7 +6,7 @@ import { useMultiWallet } from "../multiwallet";
 import type { Token, TokenMarketData } from "@/services/database";
 import { Button } from "../button";
 import { useAccount } from "wagmi";
-import { hardhat } from "wagmi/chains";
+import { localhost } from "wagmi/chains";
 import type { Abi, Address } from "viem";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -18,7 +18,7 @@ interface StepProps {
   onBack?: () => void;
   requiredChain?: "evm" | "solana" | null;
   isConnectedToRequiredChain?: boolean;
-  onConnectBase?: () => void;
+  onConnectEvm?: () => void;
   onConnectSolana?: () => void;
 }
 
@@ -51,7 +51,7 @@ export function TokenSelectionStep({
   onNext,
   requiredChain,
   isConnectedToRequiredChain,
-  onConnectBase,
+  onConnectEvm,
   onConnectSolana,
 }: StepProps) {
   const { activeFamily, evmAddress, solanaPublicKey, isConnected } =
@@ -73,7 +73,7 @@ export function TokenSelectionStep({
         return;
       }
 
-      const chain = activeFamily === "solana" ? "solana" : "base";
+      const chain = activeFamily === "solana" ? "solana" : "ethereum";
       const userAddress =
         activeFamily === "solana" ? solanaPublicKey : evmAddress;
 
@@ -150,7 +150,7 @@ export function TokenSelectionStep({
     const publicClient = await import("viem").then((m) =>
       m.createPublicClient({
         chain: {
-          ...hardhat,
+          ...localhost,
           features: undefined,
         },
         transport: m.http(
@@ -223,7 +223,7 @@ export function TokenSelectionStep({
     return (
       <div className="text-center py-8">
         <p className="text-zinc-600 dark:text-zinc-400">
-          You don&apos;t have any {activeFamily === "solana" ? "Solana" : "Base"}{" "}
+          You don&apos;t have any {activeFamily === "solana" ? "Solana" : "EVM"}{" "}
           tokens to list.
         </p>
         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-2">
@@ -282,14 +282,14 @@ export function TokenSelectionStep({
       {/* Show Connect button if token is selected but wrong chain is connected */}
       {formData.tokenId && requiredChain && !isConnectedToRequiredChain ? (
         <Button
-          onClick={requiredChain === "solana" ? onConnectSolana : onConnectBase}
+          onClick={requiredChain === "solana" ? onConnectSolana : onConnectEvm}
           className={`w-full mt-6 text-white rounded-lg ${
             requiredChain === "solana"
               ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:opacity-90"
-              : "bg-[#0052ff] hover:bg-[#0047e5]"
+              : "bg-gradient-to-br from-blue-600 to-blue-800 hover:opacity-90"
           }`}
         >
-          Connect to {requiredChain === "solana" ? "Solana" : "Base"}
+          Connect to {requiredChain === "solana" ? "Solana" : "EVM"}
         </Button>
       ) : (
         <Button

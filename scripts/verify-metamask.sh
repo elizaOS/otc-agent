@@ -6,17 +6,17 @@ echo "🦊 MetaMask Connection Verification"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Check if Hardhat is running
-echo "1️⃣  Checking Hardhat RPC..."
+# Check if Anvil is running
+echo "1️⃣  Checking Anvil RPC..."
 RESPONSE=$(curl -s -X POST http://127.0.0.1:8545 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}')
 
 if [ $? -eq 0 ] && echo "$RESPONSE" | grep -q "0x7a69"; then
-    echo "   ✅ Hardhat is running on http://127.0.0.1:8545"
+    echo "   ✅ Anvil is running on http://127.0.0.1:8545"
     echo "   ✅ Chain ID: 31337 (0x7a69)"
 else
-    echo "   ❌ Hardhat is NOT running!"
+    echo "   ❌ Anvil is NOT running"
     echo "   ➜  Start it with: bun run dev"
     exit 1
 fi
@@ -35,13 +35,13 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "📋 MetaMask Network Settings"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Network Name:    Hardhat Local"
+echo "Network Name:    Anvil Local"
 echo "RPC URL:         http://127.0.0.1:8545"
 echo "Chain ID:        31337"
 echo "Currency Symbol: ETH"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔑 Test Account Private Key"
+echo "🔑 Test Account Private Key (Anvil default account #0)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
@@ -64,7 +64,7 @@ echo ""
 echo "3. Connect to app:"
 echo "   - Open http://localhost:2222"
 echo "   - Click 'Connect' → Select 'Base' (EVM)"
-echo "   - Select 'Hardhat Local' network in MetaMask"
+echo "   - Select 'Anvil Local' network in MetaMask"
 echo "   - Approve connection"
 echo ""
 echo "📖 Full guide: See README.md 'MetaMask Setup'"

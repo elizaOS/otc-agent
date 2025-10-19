@@ -40,32 +40,32 @@ function checkRPC() {
 }
 
 async function main() {
-  console.log('🔍 Checking if Hardhat RPC is running on localhost:8545...');
+  console.log('🔍 Checking if Anvil RPC is running on localhost:8545...');
   const isRunning = await checkRPC();
 
   if (isRunning) {
-    console.log('✅ Hardhat RPC is running!');
+    console.log('✅ Anvil RPC is running');
     console.log('📝 You can interact with the OTC Desk contract.');
     process.exit(0);
     return;
   }
 
-  console.log('❌ Hardhat RPC is not running. Starting in background...');
+  console.log('❌ Anvil RPC is not running. Starting in background...');
   try {
     const child = spawn('npm', ['run', 'rpc:start'], { stdio: 'ignore', shell: true, detached: true });
     child.unref();
     // Give it a moment to boot
     await new Promise((r) => setTimeout(r, 4000));
   } catch (e) {
-    console.log('⚠️  Failed to auto-start Hardhat. Please run: cd contracts && npm run start');
+    console.log('⚠️  Failed to auto-start Anvil. Please run: ./scripts/start-anvil.sh');
   }
 
   // Re-check but do not fail the whole dev script
   const ok = await checkRPC();
   if (ok) {
-    console.log('✅ Hardhat RPC started.');
+    console.log('✅ Anvil RPC started.');
   } else {
-    console.log('⚠️  Hardhat still not responding; continuing dev server startup.');
+    console.log('⚠️  Anvil still not responding; continuing dev server startup.');
   }
   process.exit(0);
 }

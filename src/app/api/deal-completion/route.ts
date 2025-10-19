@@ -1,20 +1,14 @@
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { agentRuntime } from "@/lib/agent-runtime";
 import { walletToEntityId } from "@/lib/entityId";
-import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
+import QuoteService from "@/lib/plugin-thedesk/services/quoteService";
 import {
   DealCompletionService,
   type PaymentCurrency,
 } from "@/services/database";
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicClient, http, type Address } from "viem";
-import { baseSepolia, hardhat } from "viem/chains";
-
-function getChain() {
-  const network = process.env.NEXT_PUBLIC_NETWORK || "hardhat";
-  if (network === "base-sepolia") return baseSepolia;
-  return hardhat;
-}
+import { getChain, getRpcUrl } from "@/lib/getChain";
 
 export async function POST(request: NextRequest) {
   await agentRuntime.getRuntime();

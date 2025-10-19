@@ -15,7 +15,7 @@ async function seedTokens() {
   const deployment = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
   const elizaAddress = deployment.contracts.elizaToken;
 
-  console.log(`✅ Using ELIZA token from deployment: ${elizaAddress}`);
+  console.log(`✅ Using elizaOS token from deployment: ${elizaAddress}`);
 
   let retries = 5;
   while (retries > 0) {
@@ -38,19 +38,19 @@ async function seedTokens() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      symbol: "ELIZA",
+      symbol: "elizaOS",
       name: "elizaOS",
       contractAddress: elizaAddress,
       chain: "base",
       decimals: 18,
       logoUrl: "/tokens/eliza.svg",
-      description: "The native token of the elizaOS AI agent platform. Get discounted ELIZA with flexible lockup periods through our OTC marketplace.",
+      description: "The native token of the elizaOS AI agent platform. Get discounted elizaOS with flexible lockup periods through our OTC marketplace.",
       website: "https://elizaos.ai",
       twitter: "https://twitter.com/elizaos",
     }),
   }).catch(() => console.log("Token may already exist"));
 
-  console.log("✅ ELIZA token registered");
+  console.log("✅ elizaOS token registered");
 
   const tokenId = `token-base-${elizaAddress.toLowerCase()}`;
   const ownerAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -77,7 +77,7 @@ async function seedTokens() {
     }),
   }).catch(() => console.log("Consignment may already exist"));
 
-  console.log("✅ Created negotiable ELIZA consignment (10M tokens)");
+  console.log("✅ Created negotiable elizaOS consignment (10M tokens)");
 
   await fetch("http://localhost:2222/api/consignments", {
     method: "POST",
@@ -103,7 +103,7 @@ async function seedTokens() {
     }),
   }).catch(() => console.log("Consignment may already exist"));
 
-  console.log("✅ Created fixed-price ELIZA consignment (5M tokens)");
+  console.log("✅ Created fixed-price elizaOS consignment (5M tokens)");
   console.log("\n🎉 Multi-token OTC marketplace seeded successfully!");
   console.log("   Visit http://localhost:2222 to see available deals\n");
 }

@@ -8,7 +8,7 @@ export interface OTCQuote {
   tokenAmount: string;
   tokenAmountFormatted?: string;
   tokenSymbol: string;
-  tokenChain?: "ethereum" | "base" | "solana";
+  tokenChain?: "ethereum" | "base" | "bsc" | "jeju" | "solana";
   apr?: number;
   lockupMonths: number;
   lockupDays: number;
@@ -120,7 +120,7 @@ export function parseOTCQuoteXML(xmlString: string): OTCQuote | null {
     tokenAmount: getElementText("tokenAmount"),
     tokenAmountFormatted: getElementText("tokenAmountFormatted"),
     tokenSymbol: getElementText("tokenSymbol"),
-    tokenChain: tokenChain ? (tokenChain as "ethereum" | "base" | "solana") : undefined,
+    tokenChain: tokenChain ? (tokenChain as "ethereum" | "base" | "bsc" | "jeju" | "solana") : undefined,
     apr: getElementNumber("apr"),
     lockupMonths: getElementNumber("lockupMonths"),
     lockupDays: getElementNumber("lockupDays"),

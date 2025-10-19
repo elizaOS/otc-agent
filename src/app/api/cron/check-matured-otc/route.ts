@@ -7,8 +7,8 @@ import {
   type Address,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { hardhat, base, baseSepolia } from "viem/chains";
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
+import { getChain, getRpcUrl } from "@/lib/getChain";
 
 // This should be called daily via a cron job (e.g., Vercel Cron or external scheduler)
 // It checks for matured OTC and claims them on behalf of users
@@ -18,14 +18,6 @@ const APPROVER_PRIVATE_KEY = process.env.APPROVER_PRIVATE_KEY as
   | `0x${string}`
   | undefined;
 const CRON_SECRET = process.env.CRON_SECRET;
-
-function getChain() {
-  const env = process.env.NODE_ENV;
-  const network = process.env.NETWORK || "hardhat";
-  if (env === "production") return base;
-  if (network === "base-sepolia") return baseSepolia;
-  return hardhat;
-}
 
 export async function GET(request: NextRequest) {
   // Verify cron secret if using external scheduler
@@ -59,7 +51,8 @@ export async function GET(request: NextRequest) {
   }
 
   const chain = getChain();
-  const publicClient = createPublicClient({ chain, transport: http() });
+  const rpcUrl = getRpcUrl();
+  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
   const abi = otcArtifact.abi as Abi;
 
   // Enumerate all offers via nextOfferId
@@ -123,7 +116,7 @@ export async function GET(request: NextRequest) {
     const walletClient = createWalletClient({
       account,
       chain,
-      transport: http(),
+      transport: http(rpcUrl),
     });
 
     // Chunk to avoid gas issues (e.g., 50 per tx)

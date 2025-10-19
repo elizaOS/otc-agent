@@ -1,6 +1,6 @@
 /**
  * EVM Wallet Connection and Interaction Tests
- * Tests Base/Ethereum wallet connection via MetaMask
+ * Tests EVM wallet connection via MetaMask (supports Base, BSC, Jeju)
  */
 
 import { test as base, expect } from '@playwright/test';
@@ -8,6 +8,10 @@ import { BrowserContext } from 'playwright-core';
 import { bootstrap, Dappwright, getWallet, MetaMaskWallet } from '@tenkeylabs/dappwright';
 
 base.setTimeout(600000);
+
+// Use Jeju Localnet for testing (default network)
+const JEJU_RPC = process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://127.0.0.1:9545';
+const JEJU_CHAIN_ID = 1337;
 
 // Extend test with MetaMask wallet fixture
 export const test = base.extend<{ wallet: Dappwright }, { walletContext: BrowserContext }>({
@@ -20,15 +24,15 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
         headless: false,
       });
 
-      // Add Hardhat network
+      // Add Jeju Localnet network (primary test network)
       await wallet.addNetwork({
-        networkName: 'Hardhat',
-        rpc: 'http://127.0.0.1:8545',
-        chainId: 31337,
+        networkName: 'Jeju Localnet',
+        rpc: JEJU_RPC,
+        chainId: JEJU_CHAIN_ID,
         symbol: 'ETH',
       });
 
-      await wallet.switchNetwork('Hardhat');
+      await wallet.switchNetwork('Jeju Localnet');
 
       await use(context);
       await context.close();
@@ -53,8 +57,10 @@ test.describe('EVM Wallet Connection', () => {
     // Click connect button
     await page.getByRole('button', { name: /connect/i }).first().click();
     
-    // Choose Base (EVM)
-    await page.getByRole('button', { name: /base/i }).click();
+    // Choose EVM, then Jeju
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     
     // Approve in MetaMask
@@ -77,19 +83,21 @@ test.describe('EVM Wallet Connection', () => {
     
     // Connect wallet
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(3000);
     
     // Click wallet menu
     const walletButton = page.locator('button:has-text("0x")').or(
-      page.locator('button').filter({ hasText: /Base/i })
+      page.locator('button').filter({ hasText: /EVM|Jeju/i })
     );
     await walletButton.first().click();
     
-    // Should show network info
-    await expect(page.getByText(/Base|EVM|Hardhat/i)).toBeVisible();
+    // Should show network info (Jeju or EVM)
+    await expect(page.getByText(/EVM|Jeju/i)).toBeVisible();
   });
 
   test('can disconnect wallet', async ({ page, wallet }) => {
@@ -97,14 +105,16 @@ test.describe('EVM Wallet Connection', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(3000);
     
     // Open wallet menu
     const walletButton = page.locator('button:has-text("0x")').or(
-      page.locator('button').filter({ hasText: /Base/i })
+      page.locator('button').filter({ hasText: /EVM|Jeju/i })
     );
     await walletButton.first().click();
     
@@ -121,7 +131,9 @@ test.describe('EVM Wallet Connection', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(3000);
@@ -141,7 +153,9 @@ test.describe('EVM Chat and Quote Flow', () => {
     
     // Connect wallet
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -178,7 +192,9 @@ test.describe('EVM Transaction Signing', () => {
     
     // Connect wallet
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(3000);
@@ -195,7 +211,9 @@ test.describe('EVM Transaction Signing', () => {
     
     // Connect wallet
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(3000);

@@ -6,7 +6,7 @@ Before running E2E tests, verify:
 
 - [ ] Node.js 18+ installed
 - [ ] Bun installed (for scripts)
-- [ ] Hardhat CLI available (`npx hardhat --version`)
+- [ ] Foundry installed (`forge --version`)
 - [ ] Solana CLI available (`solana --version`) - optional
 - [ ] Playwright installed (`npx playwright --version`)
 - [ ] Chromium browser installed (`npx playwright install chromium`)
@@ -77,8 +77,8 @@ Expected: Browser opens with interactive test report
 ### Manual Service Check
 
 ```bash
-# Check Hardhat
-nc -z 127.0.0.1 8545 && echo "✅ Hardhat running" || echo "❌ Hardhat not running"
+# Check Anvil
+nc -z 127.0.0.1 8545 && echo "✅ Anvil running" || echo "❌ Anvil not running"
 
 # Check Solana (optional)
 nc -z 127.0.0.1 8899 && echo "✅ Solana running" || echo "❌ Solana not running"
@@ -192,14 +192,14 @@ npx playwright test --headed
 npx playwright install chromium --force
 ```
 
-### Issue: "Cannot connect to Hardhat"
+### Issue: "Cannot connect to Anvil"
 
-**Cause**: Hardhat not running or wrong port
+**Cause**: Anvil not running or wrong port
 
 **Solution**:
 ```bash
-# Start Hardhat manually
-cd contracts && npx hardhat node
+# Start Anvil manually
+./scripts/start-anvil.sh
 
 # Verify port
 lsof -i:8545

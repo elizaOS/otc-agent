@@ -1,17 +1,12 @@
-node_modules
-.env
+# Foundry / Forge
+out/
+cache/
+broadcast/
+.env.deployment
 
-# Hardhat files
-/cache
-/artifacts
+# Node
+node_modules/
 
-# TypeChain files
-/typechain
-/typechain-types
-
-# solidity-coverage files
-/coverage
-/coverage.json
-
-# Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
+# Deployment artifacts
+deployments/*.json
+!deployments/.gitkeep

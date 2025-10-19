@@ -9,11 +9,13 @@ import {
   useState,
 } from "react";
 import { useChainId, useDisconnect } from "wagmi";
-import { base, hardhat, mainnet } from "wagmi/chains";
+import { base, baseSepolia, bsc, bscTestnet, localhost } from "wagmi/chains";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
+import { jejuMainnet, jejuTestnet, jejuLocalnet } from "@/lib/chains";
+import type { EVMChain } from "@/types";
 
 type ChainFamily = "evm" | "solana" | "social" | "none";
 
@@ -26,6 +28,8 @@ type SolanaWalletAdapter = {
 type MultiWalletContextValue = {
   activeFamily: ChainFamily;
   setActiveFamily: (family: Exclude<ChainFamily, "none">) => void;
+  selectedEVMChain: EVMChain;
+  setSelectedEVMChain: (chain: EVMChain) => void;
 
   // Connection status
   isConnected: boolean;
@@ -50,6 +54,8 @@ type MultiWalletContextValue = {
   // Helpers
   paymentPairLabel: string; // e.g. "USDC/ETH" or "USDC/SOL"
   isPhantomInstalled: boolean;
+  currentChainId: number | null;
+  isJejuChain: boolean;
 
   // Privy methods
   login: () => void;
@@ -116,6 +122,7 @@ export function MultiWalletProvider({
   const chainId = useChainId();
 
   const [activeFamily, setActiveFamilyState] = useState<ChainFamily>("none");
+  const [selectedEVMChain, setSelectedEVMChain] = useState<EVMChain>("base");
   const [isFarcasterContext, setIsFarcasterContext] = useState(false);
   const [isPhantomInstalled, setIsPhantomInstalled] = useState(false);
 
@@ -313,11 +320,23 @@ export function MultiWalletProvider({
 
   const isConnected = evmConnected || solanaConnected || privyAuthenticated;
 
+  // Determine if current chain is Jeju (mainnet, testnet, or localnet)
+  const isJejuChain = useMemo(() => {
+    if (!chainId) return false;
+    return chainId === jejuMainnet.id || chainId === jejuTestnet.id || chainId === jejuLocalnet.id;
+  }, [chainId]);
+
+  // EVM network name
   const evmNetworkName = useMemo(() => {
     if (!chainId) return "Unknown";
-    if (chainId === hardhat.id) return "Hardhat";
-    if (chainId === mainnet.id) return "Mainnet";
+    if (chainId === localhost.id) return "Anvil";
     if (chainId === base.id) return "Base";
+    if (chainId === baseSepolia.id) return "Base Sepolia";
+    if (chainId === bsc.id) return "BSC";
+    if (chainId === bscTestnet.id) return "BSC Testnet";
+    if (chainId === jejuMainnet.id) return "Jeju";
+    if (chainId === jejuTestnet.id) return "Jeju Testnet";
+    if (chainId === jejuLocalnet.id) return "Jeju Localnet";
     return `Chain ${chainId}`;
   }, [chainId]);
 
@@ -331,7 +350,14 @@ export function MultiWalletProvider({
 
   const networkLabel = useMemo(() => {
     if (activeFamily === "evm" && evmConnected) {
-      return `EVM ${evmNetworkName}`;
+      // Show selected EVM chain if it's a recognized name, otherwise show the detected network
+      const chainNames: Record<string, string> = {
+        base: "Base",
+        bsc: "BSC",
+        jeju: "Jeju",
+      };
+      const selectedChainName = chainNames[selectedEVMChain] || evmNetworkName;
+      return selectedChainName;
     }
     if (activeFamily === "solana" && solanaConnected) {
       return `Solana ${solanaNetworkName}`;
@@ -339,7 +365,7 @@ export function MultiWalletProvider({
     if (activeFamily === "social" && privyAuthenticated) {
       return isFarcasterContext ? "Farcaster" : "Social Login";
     }
-    if (evmConnected) return `EVM ${evmNetworkName}`;
+    if (evmConnected) return `${evmNetworkName}`;
     if (solanaConnected) return `Solana ${solanaNetworkName}`;
     if (privyAuthenticated) return "Social Login";
     return "Not connected";
@@ -347,6 +373,7 @@ export function MultiWalletProvider({
     activeFamily,
     evmConnected,
     solanaConnected,
+    selectedEVMChain,
     evmNetworkName,
     solanaNetworkName,
     privyAuthenticated,
@@ -384,6 +411,8 @@ export function MultiWalletProvider({
   const value: MultiWalletContextValue = {
     activeFamily,
     setActiveFamily,
+    selectedEVMChain,
+    setSelectedEVMChain,
     isConnected,
     entityId,
     networkLabel,
@@ -398,6 +427,8 @@ export function MultiWalletProvider({
     isFarcasterContext,
     paymentPairLabel,
     isPhantomInstalled,
+    currentChainId: chainId ?? null,
+    isJejuChain,
     login,
     logout,
     connectWallet,

@@ -9,7 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 import { WagmiProvider } from "wagmi";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { base, hardhat, mainnet } from "wagmi/chains";
+import { base, localhost, mainnet } from "wagmi/chains";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,12 +74,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
           // Embedded wallets for users without external wallets
           embeddedWallets: {
-            createOnLogin: "users-without-wallets",
-            requireUserPasswordOnCreate: false,
+            ethereum: {
+              createOnLogin: "users-without-wallets",
+            },
           },
-          defaultChain: isDevelopment ? hardhat : base,
+          defaultChain: isDevelopment ? localhost : base,
           supportedChains: isDevelopment
-            ? [hardhat, base, mainnet]
+            ? [localhost, base, mainnet]
             : [base, mainnet],
         }}
       >

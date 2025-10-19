@@ -74,6 +74,7 @@ class AgentRuntimeManager {
       (globalThis as any).__elizaRuntime = null;
 
       // Initialize runtime with database configuration for SQL plugin
+      // In localnet mode, connects to Docker PostgreSQL on port 5439
       const DEFAULT_POSTGRES_URL = `postgres://eliza:password@localhost:${process.env.POSTGRES_DEV_PORT || 5439}/eliza`;
       // Use the existing agent ID from DB (b850bc30-45f8-0041-a00a-83df46d8555d)
       const RUNTIME_AGENT_ID = "b850bc30-45f8-0041-a00a-83df46d8555d" as UUID;
@@ -81,7 +82,7 @@ class AgentRuntimeManager {
         ...agent,
         agentId: RUNTIME_AGENT_ID,
         settings: {
-          GROQ_API_KEY: process.env.GROQ_API_KEY,
+          GROQ_API_KEY: process.env.GROQ_API_KEY || "",
           SMALL_GROQ_MODEL:
             process.env.SMALL_GROQ_MODEL || "llama-3.1-8b-instant",
           LARGE_GROQ_MODEL: process.env.LARGE_GROQ_MODEL || "qwen/qwen3-32b",
@@ -148,11 +149,11 @@ class AgentRuntimeManager {
     await runtime.ensureConnection({
       entityId: entityUuid,
       roomId: roomId as UUID,
-      worldId: stringToUuid("otc-desk-world"),
+      worldId: stringToUuid("thedesk-world"),
       source: "web",
       type: ChannelType.DM,
       channelId: roomId,
-      serverId: "otc-desk-server",
+      serverId: "thedesk-server",
       userName: entityId,
     } as any);
 

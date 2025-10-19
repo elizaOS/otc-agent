@@ -67,8 +67,8 @@ test.describe('Solana Wallet UI', () => {
     await page.getByRole('button', { name: /connect/i }).first().click();
     await page.waitForTimeout(1000);
     
-    // Both networks should be visible
-    await expect(page.getByRole('button', { name: /base/i })).toBeVisible();
+    // Both network families should be visible (EVM and Solana)
+    await expect(page.getByRole('button', { name: /evm/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /solana/i })).toBeVisible();
   });
 

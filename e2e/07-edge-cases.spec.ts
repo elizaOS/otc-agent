@@ -8,6 +8,10 @@ import { BrowserContext } from 'playwright-core';
 import { bootstrap, Dappwright, getWallet, MetaMaskWallet } from '@tenkeylabs/dappwright';
 
 base.setTimeout(600000);
+// Use Jeju Localnet for testing (default network)
+const JEJU_RPC = process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://127.0.0.1:9545';
+const JEJU_CHAIN_ID = 1337;
+
 
 export const test = base.extend<{ wallet: Dappwright }, { walletContext: BrowserContext }>({
   walletContext: [
@@ -20,13 +24,13 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
       });
 
       await wallet.addNetwork({
-        networkName: 'Hardhat',
-        rpc: 'http://127.0.0.1:8545',
-        chainId: 31337,
+        networkName: 'Jeju Localnet',
+        rpc: JEJU_RPC,
+        chainId: JEJU_CHAIN_ID,
         symbol: 'ETH',
       });
 
-      await wallet.switchNetwork('Hardhat');
+      await wallet.switchNetwork('Jeju Localnet');
 
       await use(context);
       await context.close();
@@ -64,7 +68,9 @@ test.describe('Form Validation Edge Cases', () => {
     
     // Connect wallet
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -184,7 +190,9 @@ test.describe('Network and Connection Edge Cases', () => {
     await page.waitForTimeout(500);
     
     // Choose Base
-    const baseBtn = page.getByRole('button', { name: /base/i });
+    const baseBtn = page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i });
     if (await baseBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await baseBtn.click();
       await page.waitForTimeout(1000);
@@ -201,7 +209,9 @@ test.describe('Network and Connection Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -217,7 +227,9 @@ test.describe('Chat Edge Cases', () => {
     
     // Connect and navigate to token
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -247,7 +259,9 @@ test.describe('Chat Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -279,7 +293,9 @@ test.describe('Chat Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -321,7 +337,9 @@ test.describe('Modal Edge Cases', () => {
     // Open and close network selection
     await page.getByRole('button', { name: /connect/i }).first().click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -356,7 +374,9 @@ test.describe('Transaction Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -400,7 +420,9 @@ test.describe('Data Validation Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -447,7 +469,9 @@ test.describe('Concurrency Edge Cases', () => {
     // Open first tab
     await page.goto('/');
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -469,7 +493,9 @@ test.describe('Concurrency Edge Cases', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -512,7 +538,7 @@ test.describe('State Management Edge Cases', () => {
     
     // Corrupt localStorage
     await page.evaluate(() => {
-      localStorage.setItem('otc-desk-room-test', '{invalid json}');
+      localStorage.setItem('thedesk-room-test', '{invalid json}');
       localStorage.setItem('activeFamily', 'invalid-family');
     });
     
@@ -611,7 +637,9 @@ test.describe('Clipboard and External Actions', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);

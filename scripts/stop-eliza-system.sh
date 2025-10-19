@@ -65,11 +65,8 @@ main() {
     # Stop approval worker
     stop_process "quoteApprovalWorker" "Approval Worker"
     
-    # Stop Hardhat node
-    stop_process "hardhat node" "Hardhat Node"
-    
-    # Clean up any orphaned node processes
-    stop_process "node.*hardhat" "Hardhat Processes"
+    # Stop Anvil node
+    stop_process "anvil" "Anvil Node"
     
     echo
     log "✅ All services stopped successfully!" "$GREEN$BOLD"

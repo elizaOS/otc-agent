@@ -8,6 +8,10 @@ import { BrowserContext } from 'playwright-core';
 import { bootstrap, Dappwright, getWallet, MetaMaskWallet } from '@tenkeylabs/dappwright';
 
 base.setTimeout(600000);
+// Use Jeju Localnet for testing (default network)
+const JEJU_RPC = process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://127.0.0.1:9545';
+const JEJU_CHAIN_ID = 1337;
+
 
 export const test = base.extend<{ wallet: Dappwright }, { walletContext: BrowserContext }>({
   walletContext: [
@@ -20,13 +24,13 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
       });
 
       await wallet.addNetwork({
-        networkName: 'Hardhat',
-        rpc: 'http://127.0.0.1:8545',
-        chainId: 31337,
+        networkName: 'Jeju Localnet',
+        rpc: JEJU_RPC,
+        chainId: JEJU_CHAIN_ID,
         symbol: 'ETH',
       });
 
-      await wallet.switchNetwork('Hardhat');
+      await wallet.switchNetwork('Jeju Localnet');
 
       await use(context);
       await context.close();
@@ -50,7 +54,7 @@ test.describe('Multi-Step Form Interactions', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -70,7 +74,7 @@ test.describe('Multi-Step Form Interactions', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -106,7 +110,7 @@ test.describe('Tab Switching and State', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -137,7 +141,7 @@ test.describe('Tab Switching and State', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -157,7 +161,7 @@ test.describe('Dropdown and Select Interactions', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -235,7 +239,7 @@ test.describe('Copy and Paste', () => {
     const searchInput = page.getByPlaceholder(/search tokens/i);
     
     // Write to clipboard
-    await page.evaluate(() => navigator.clipboard.writeText('ELIZA'));
+    await page.evaluate(() => navigator.clipboard.writeText('elizaOS'));
     
     // Focus and paste
     await searchInput.click();
@@ -252,7 +256,7 @@ test.describe('Copy and Paste', () => {
     
     // Connect to get address
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -361,7 +365,7 @@ test.describe('Dynamic Content Updates', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -400,7 +404,7 @@ test.describe('Network Selection Flow', () => {
     await page.waitForTimeout(1000);
     
     // Hover over Base
-    await page.getByRole('button', { name: /base/i }).hover();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).hover();
     await page.waitForTimeout(300);
     
     // Hover over Solana
@@ -420,7 +424,7 @@ test.describe('Network Selection Flow', () => {
     
     // Connect to Base
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -435,7 +439,7 @@ test.describe('Network Selection Flow', () => {
       await page.waitForTimeout(1000);
       
       // Should show network info
-      await expect(page.getByText(/base|evm|hardhat/i)).toBeVisible();
+      await expect(page.getByText(/base|evm|anvil/i)).toBeVisible();
     }
   });
 });
@@ -614,7 +618,7 @@ test.describe('Search and Filter Combinations', () => {
     
     // Apply filter
     const searchInput = page.getByPlaceholder(/search tokens/i);
-    await searchInput.fill('ELIZA');
+    await searchInput.fill('elizaOS');
     await page.waitForTimeout(1000);
     
     // Navigate away
@@ -635,7 +639,7 @@ test.describe('Wallet Persistence', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
@@ -656,7 +660,7 @@ test.describe('Wallet Persistence', () => {
     
     // Connect
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click(); await page.waitForTimeout(1000); await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);

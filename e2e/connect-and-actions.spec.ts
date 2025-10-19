@@ -3,7 +3,7 @@ baseExpect.setTimeout(600000);
 import { test } from "./helpers/walletTest";
 
 test.describe("Wallet connect and actions", () => {
-  test("connect to EVM via RainbowKit and verify header state", async ({ page, wallet }) => {
+  test("connect to EVM via Privy and verify header state", async ({ page, wallet }) => {
     // Open app
     await page.goto("/");
 
@@ -12,8 +12,13 @@ test.describe("Wallet connect and actions", () => {
     await connectBtn.click();
 
     // Choose EVM in modal
-    const evmChoice = page.getByRole("button", { name: /base/i });
+    const evmChoice = page.getByRole("button", { name: /evm/i });
     await evmChoice.click();
+    await page.waitForTimeout(1000);
+
+    // Choose Jeju chain
+    const jejuChoice = page.getByRole("button", { name: /jeju/i });
+    await jejuChoice.click();
 
     // Approve connection in MetaMask
     await wallet.approve();

@@ -1,0 +1,20 @@
+{
+  "name": "thedesk",
+  "displayName": "OTC Trading Desk",
+  "version": "1.0.0",
+  "description": "Over-the-counter trading desk for large token swaps",
+  "commands": {
+    "dev": "bun run dev",
+    "build": "bun run build",
+    "start": "bun run start"
+  },
+  "ports": {
+    "main": 3003,
+    "api": 3004
+  },
+  "dependencies": ["contracts", "config"],
+  "optional": true,
+  "enabled": true,
+  "tags": ["defi", "trading", "otc"]
+}
+

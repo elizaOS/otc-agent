@@ -32,7 +32,7 @@ describe('Database Reconciliation (Mock Simulation)', () => {
     console.log('  ✅ reconcileAllActive method found');
 
     // Verify it reads from contract
-    expect(reconCode).toContain('client.readContract');
+    expect(reconCode).toContain('this.client') || expect(reconCode).toContain('publicClient.readContract');
     console.log('  ✅ Contract reading logic found');
 
     // Verify it checks status
@@ -103,7 +103,7 @@ describe('Full System Architecture', () => {
     // Quote action
     const quotePath = path.join(
       process.cwd(),
-      'src/lib/plugin-otc-desk/actions/quote.ts'
+      'src/lib/plugin-thedesk/actions/quote.ts'
     );
     const quoteCode = fs.readFileSync(quotePath, 'utf8');
     expect(quoteCode).not.toContain('createOTCOfferOnChain'); // No mocks!

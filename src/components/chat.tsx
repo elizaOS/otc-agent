@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from "uuid";
 import { ChatMessages } from "@/components/chat-messages";
 import { Dialog } from "@/components/dialog";
 import { useMultiWallet } from "@/components/multiwallet";
-import { BaseLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMLogo, SolanaLogo } from "@/components/icons/index";
+import { EVMChainSelectorModal } from "@/components/evm-chain-selector-modal";
 import { LoadingSpinner } from "@/components/spinner";
 import { TextareaWithActions } from "@/components/textarea-with-actions";
 import { AcceptQuoteModal } from "@/components/accept-quote-modal";
@@ -33,7 +34,6 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     entityId: walletEntityId,
     activeFamily,
     setActiveFamily,
-    login,
     connectSolanaWallet,
     isPhantomInstalled,
   } = useMultiWallet();
@@ -42,6 +42,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
   const [showAcceptModal, setShowAcceptModal] = useState<boolean>(false);
   const [isOfferGlowing, setIsOfferGlowing] = useState<boolean>(false);
   const [showClearChatModal, setShowClearChatModal] = useState<boolean>(false);
+  const [showEVMChainSelector, setShowEVMChainSelector] = useState<boolean>(false);
 
   // --- Refs ---
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,7 +60,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
       setUserId(addr);
 
       // Load room for this wallet if we have one
-      const storedRoomId = localStorage.getItem(`otc-desk-room-${addr}`);
+      const storedRoomId = localStorage.getItem(`thedesk-room-${addr}`);
       if (storedRoomId && !initialRoomId) {
         setRoomId(storedRoomId);
       }
@@ -94,7 +95,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     setRoomId(newRoomId);
     // Persist room per-wallet
     if (entityId) {
-      localStorage.setItem(`otc-desk-room-${entityId}`, newRoomId);
+      localStorage.setItem(`thedesk-room-${entityId}`, newRoomId);
     }
     setMessages([]);
 
@@ -536,6 +537,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     // Validate quote has required fields
     if (!currentQuote.quoteId) {
       console.error("[Chat] Quote missing quoteId");
+      alert("Invalid quote data. Please request a new quote.");
       return;
     }
 
@@ -550,7 +552,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     if (!entityId) return;
 
     // Clear local storage for this wallet
-    localStorage.removeItem(`otc-desk-room-${entityId}`);
+    localStorage.removeItem(`thedesk-room-${entityId}`);
 
     // Create a new room
     const newRoomId = await createNewRoom();
@@ -583,7 +585,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     }
 
     // Clear local storage for this wallet
-    localStorage.removeItem(`otc-desk-room-${entityId}`);
+    localStorage.removeItem(`thedesk-room-${entityId}`);
 
     // Create a new room
     const newRoomId = await createNewRoom();
@@ -612,13 +614,12 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
   }, [entityId, createNewRoom]);
 
   const handleConnectEvm = useCallback(() => {
-    console.log("[Chat] Connecting to Base/EVM...");
-    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
-    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
+    console.log("[Chat] Opening EVM chain selector...");
+    localStorage.setItem("thedesk-connect-overlay-seen", "1");
+    localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
     setShowConnectOverlay(false);
-    setActiveFamily("evm");
-    login();
-  }, [setActiveFamily, login]);
+    setShowEVMChainSelector(true);
+  }, []);
 
   const handleConnectSolana = useCallback(() => {
     console.log("[Chat] Connecting to Solana...");
@@ -626,8 +627,8 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
       alert("Please install Phantom or Solflare wallet to use Solana.");
       return;
     }
-    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
-    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
+    localStorage.setItem("thedesk-connect-overlay-seen", "1");
+    localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
     setShowConnectOverlay(false);
     setActiveFamily("solana");
     connectSolanaWallet();
@@ -639,9 +640,9 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     if (targetChain === "solana") {
       handleConnectSolana();
     } else {
-      handleConnectEvm();
+      setShowEVMChainSelector(true);
     }
-  }, [handleConnectEvm, handleConnectSolana]);
+  }, [handleConnectSolana]);
 
   return (
     <div className="flex flex-col w-full">
@@ -672,6 +673,11 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
         onClose={() => setShowAcceptModal(false)}
         initialQuote={currentQuote}
         onComplete={handleDealComplete}
+      />
+
+      <EVMChainSelectorModal
+        isOpen={showEVMChainSelector}
+        onClose={() => setShowEVMChainSelector(false)}
       />
 
       {/* Clear Chat Confirmation Modal */}
@@ -735,11 +741,11 @@ function ChatHeader({
   // Determine if user needs to switch chains
   const needsChainSwitch = currentQuote && currentQuote.tokenChain ? (
     (currentQuote.tokenChain === "solana" && activeFamily !== "solana") ||
-    ((currentQuote.tokenChain === "base" || currentQuote.tokenChain === "ethereum") && activeFamily !== "evm")
+    ((currentQuote.tokenChain === "base" || currentQuote.tokenChain === "bsc" || currentQuote.tokenChain === "jeju" || currentQuote.tokenChain === "ethereum") && activeFamily !== "evm")
   ) : false;
 
   const requiredChain = currentQuote?.tokenChain === "solana" ? "solana" : "evm";
-  const chainDisplayName = currentQuote?.tokenChain === "solana" ? "Solana" : "Base";
+  const chainDisplayName = currentQuote?.tokenChain === "solana" ? "Solana" : "EVM";
 
   console.log("[ChatHeader] Chain check:", {
     quoteChain: currentQuote?.tokenChain,
@@ -934,8 +940,8 @@ function ChatBody({
       <Dialog
         open={showConnectOverlay}
         onClose={() => {
-          localStorage.setItem("otc-desk-connect-overlay-seen", "1");
-          localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
+          localStorage.setItem("thedesk-connect-overlay-seen", "1");
+          localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
           setShowConnectOverlay(false);
         }}
       >
@@ -961,13 +967,14 @@ function ChatBody({
                   <button
                     type="button"
                     onClick={onConnectEvm}
-                    className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-[#0052ff] border-2 border-[#0047e5] hover:border-[#0052ff] hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0052ff] focus:ring-offset-2 focus:ring-offset-zinc-900"
+                    className="group rounded-xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer text-white bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-700 hover:border-blue-600 hover:brightness-110 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 focus:ring-offset-zinc-900"
                   >
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                        <BaseLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+                        <EVMLogo className="w-8 h-8 sm:w-10 sm:h-10" />
                       </div>
-                      <div className="text-xl sm:text-2xl font-bold">Base</div>
+                      <div className="text-xl sm:text-2xl font-bold">EVM</div>
+                      <div className="text-xs text-white/70">Base, BSC, Jeju</div>
                     </div>
                   </button>
                   <button
@@ -987,9 +994,9 @@ function ChatBody({
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+                  localStorage.setItem("thedesk-connect-overlay-seen", "1");
                   localStorage.setItem(
-                    "otc-desk-connect-overlay-dismissed",
+                    "thedesk-connect-overlay-dismissed",
                     "1",
                   );
                   setShowConnectOverlay(false);

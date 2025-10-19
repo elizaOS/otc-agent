@@ -15,11 +15,11 @@ interface StepProps {
   onBack: () => void;
   requiredChain?: "evm" | "solana" | null;
   isConnectedToRequiredChain?: boolean;
-  onConnectBase?: () => void;
+  onConnectEvm?: () => void;
   onConnectSolana?: () => void;
 }
 
-export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequiredChain, onConnectBase, onConnectSolana }: StepProps) {
+export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequiredChain, onConnectEvm, onConnectSolana }: StepProps) {
   const { activeFamily, evmAddress, solanaPublicKey } = useMultiWallet();
   const { address } = useAccount();
   const { createConsignmentOnChain, approveToken, getTokenAddress, getRequiredGasDeposit } = useOTC();
@@ -51,8 +51,9 @@ export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequi
   };
 
   const getBlockExplorerUrl = (txHash: string) => {
-    // For local hardhat, we don't have a block explorer
+    // For local Anvil, we don't have a block explorer
     // In production, use the appropriate explorer for the chain
+    // TODO: Make this dynamic based on selectedEVMChain
     return `https://basescan.org/tx/${txHash}`;
   };
 
@@ -76,7 +77,7 @@ export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequi
     }
 
     if (activeFamily === "evm" && !address) {
-      alert("Please connect your EVM wallet (Base)");
+      alert("Please connect your EVM wallet");
       return;
     }
 
@@ -241,14 +242,14 @@ export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequi
         </Button>
         {formData.tokenId && requiredChain && !isConnectedToRequiredChain ? (
           <Button 
-            onClick={requiredChain === "solana" ? onConnectSolana : onConnectBase}
+            onClick={requiredChain === "solana" ? onConnectSolana : onConnectEvm}
             className={`flex-1 !py-2 !px-4 text-white ${
               requiredChain === "solana"
                 ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:opacity-90"
-                : "bg-[#0052ff] hover:bg-[#0047e5]"
+                : "bg-gradient-to-br from-blue-600 to-blue-800 hover:opacity-90"
             }`}
           >
-            Connect to {requiredChain === "solana" ? "Solana" : "Base"}
+            Connect to {requiredChain === "solana" ? "Solana" : "EVM"}
           </Button>
         ) : (
           <Button 
@@ -267,7 +268,7 @@ export function ReviewStep({ formData, onBack, requiredChain, isConnectedToRequi
         onClose={() => setIsModalOpen(false)}
         formData={formData}
         consignerAddress={activeFamily === "solana" ? solanaPublicKey || "" : evmAddress || ""}
-        chain={activeFamily === "solana" ? "solana" : "base"}
+        chain={activeFamily === "solana" ? "solana" : "ethereum"}
         activeFamily={activeFamily as string}
         onApproveToken={handleApproveToken}
         onCreateConsignment={handleCreateConsignment}

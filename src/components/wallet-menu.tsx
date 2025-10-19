@@ -1,7 +1,8 @@
 "use client";
 
 import { useMultiWallet } from "@/components/multiwallet";
-import { BaseLogo } from "@/components/icons/index";
+import { EVMLogo } from "@/components/icons/index";
+import { EVMChainSelectorModal } from "@/components/evm-chain-selector-modal";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
@@ -19,7 +20,6 @@ export function WalletMenu() {
     evmConnected,
     solanaConnected,
     networkLabel,
-    login,
     connectWallet,
     connectSolanaWallet,
     switchSolanaWallet,
@@ -27,6 +27,7 @@ export function WalletMenu() {
   } = useMultiWallet();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [showEVMChainSelector, setShowEVMChainSelector] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentAddress =
@@ -89,14 +90,12 @@ export function WalletMenu() {
 
     console.log(`[WalletMenu] Switching from ${activeFamily} to ${targetFamily}`);
 
-    // Set active family first
-    setActiveFamily(targetFamily);
-
     // Then open appropriate connection modal for target network
     if (targetFamily === "evm") {
-      login(); // Privy modal for Base
+      setShowEVMChainSelector(true);
     } else if (targetFamily === "solana") {
-      connectSolanaWallet(); // Solana wallet-adapter modal
+      setActiveFamily(targetFamily);
+      connectSolanaWallet();
     }
   };
 
@@ -131,7 +130,7 @@ export function WalletMenu() {
         <path d="M20.45,9.37l-7.72,7.72a1.5,1.5,0,0,1-2.12,0L3.55,10a1.5,1.5,0,0,1,0-2.12L10.61.83a1.5,1.5,0,0,1,2.12,0l7.72,7.72A1.5,1.5,0,0,1,20.45,9.37Z" />
       </svg>
     ) : (
-      <BaseLogo className="w-3.5 h-3.5" />
+      <EVMLogo className="w-3.5 h-3.5" />
     );
 
   // If we don't have an address, don't render (happens during disconnect/switch)
@@ -153,7 +152,7 @@ export function WalletMenu() {
           className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md ${networkBadgeClass} text-xs font-medium`}
         >
           {networkIcon}
-          <span>{activeFamily === "solana" ? "Solana" : "Base"}</span>
+          <span>{activeFamily === "solana" ? "Solana" : "EVM"}</span>
         </div>
 
         {/* Separator */}
@@ -231,7 +230,7 @@ export function WalletMenu() {
                 />
               </svg>
               <span>
-                Switch to {activeFamily === "solana" ? "Base" : "Solana"}
+                Switch to {activeFamily === "solana" ? "EVM" : "Solana"}
               </span>
             </button>
             <button
@@ -277,6 +276,11 @@ export function WalletMenu() {
           </div>
         </div>
       )}
+
+      <EVMChainSelectorModal
+        isOpen={showEVMChainSelector}
+        onClose={() => setShowEVMChainSelector(false)}
+      />
     </div>
   );
 }

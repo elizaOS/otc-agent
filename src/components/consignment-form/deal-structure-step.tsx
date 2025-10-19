@@ -9,7 +9,7 @@ interface StepProps {
   onBack: () => void;
   requiredChain?: "evm" | "solana" | null;
   isConnectedToRequiredChain?: boolean;
-  onConnectBase?: () => void;
+  onConnectEvm?: () => void;
   onConnectSolana?: () => void;
 }
 
@@ -20,7 +20,7 @@ export function DealStructureStep({
   onBack,
   requiredChain,
   isConnectedToRequiredChain,
-  onConnectBase,
+  onConnectEvm,
   onConnectSolana,
 }: StepProps) {
   const walletBalance = formData.amount ? parseFloat(formData.amount) : 0;
@@ -193,15 +193,15 @@ export function DealStructureStep({
         </Button>
         {formData.tokenId && requiredChain && !isConnectedToRequiredChain ? (
           <Button
-            onClick={requiredChain === "solana" ? onConnectSolana : onConnectBase}
+            onClick={requiredChain === "solana" ? onConnectSolana : onConnectEvm}
             disabled={!isValid}
             className={`flex-1 px-6 py-3 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium transition-colors ${
               requiredChain === "solana"
                 ? "bg-gradient-to-br from-[#9945FF] to-[#14F195] hover:opacity-90"
-                : "bg-[#0052ff] hover:bg-[#0047e5]"
+                : "bg-gradient-to-br from-blue-600 to-blue-800 hover:opacity-90"
             }`}
           >
-            Connect to {requiredChain === "solana" ? "Solana" : "Base"}
+            Connect to {requiredChain === "solana" ? "Solana" : "EVM"}
           </Button>
         ) : (
           <Button

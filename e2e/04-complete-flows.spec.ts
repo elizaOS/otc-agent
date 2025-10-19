@@ -1,6 +1,6 @@
 /**
  * Complete End-to-End User Flows
- * Tests critical user journeys from start to finish
+ * Tests critical user journeys from start to finish on Jeju chain
  */
 
 import { test as base, expect } from '@playwright/test';
@@ -8,6 +8,10 @@ import { BrowserContext } from 'playwright-core';
 import { bootstrap, Dappwright, getWallet, MetaMaskWallet } from '@tenkeylabs/dappwright';
 
 base.setTimeout(600000);
+
+// Use Jeju Localnet for testing (default network)
+const JEJU_RPC = process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://127.0.0.1:9545';
+const JEJU_CHAIN_ID = 1337;
 
 export const test = base.extend<{ wallet: Dappwright }, { walletContext: BrowserContext }>({
   walletContext: [
@@ -19,14 +23,15 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
         headless: false,
       });
 
+      // Add Jeju Localnet network (primary test network)
       await wallet.addNetwork({
-        networkName: 'Hardhat',
-        rpc: 'http://127.0.0.1:8545',
-        chainId: 31337,
+        networkName: 'Jeju Localnet',
+        rpc: JEJU_RPC,
+        chainId: JEJU_CHAIN_ID,
         symbol: 'ETH',
       });
 
-      await wallet.switchNetwork('Hardhat');
+      await wallet.switchNetwork('Jeju Localnet');
 
       await use(context);
       await context.close();
@@ -46,17 +51,19 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
 
 test.describe('Complete User Journeys', () => {
   test('buyer flow: connect → negotiate → accept → pay', async ({ page, wallet }) => {
-    console.log('\n💰 Testing Complete Buyer Flow\n');
+    console.log('\n💰 Testing Complete Buyer Flow on Jeju Chain\n');
     
-    // 1. Connect wallet
-    console.log('1️⃣  Connecting wallet...');
+    // 1. Connect wallet to Jeju
+    console.log('1️⃣  Connecting wallet to Jeju...');
     await page.goto('/');
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
-    console.log('   ✅ Wallet connected');
+    console.log('   ✅ Wallet connected to Jeju');
     
     // 2. Navigate to a token to negotiate
     console.log('2️⃣  Finding available token...');
@@ -132,17 +139,19 @@ test.describe('Complete User Journeys', () => {
   });
 
   test('seller flow: connect → list tokens → monitor', async ({ page, wallet }) => {
-    console.log('\n📝 Testing Complete Seller Flow\n');
+    console.log('\n📝 Testing Complete Seller Flow on Jeju Chain\n');
     
-    // 1. Connect wallet
-    console.log('1️⃣  Connecting wallet...');
+    // 1. Connect wallet to Jeju
+    console.log('1️⃣  Connecting wallet to Jeju...');
     await page.goto('/');
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);
-    console.log('   ✅ Wallet connected');
+    console.log('   ✅ Wallet connected to Jeju');
     
     // 2. Navigate to consign page
     console.log('2️⃣  Opening consignment form...');
@@ -169,12 +178,14 @@ test.describe('Complete User Journeys', () => {
   });
 
   test('view my deals after purchase', async ({ page, wallet }) => {
-    console.log('\n📊 Testing My Deals View\n');
+    console.log('\n📊 Testing My Deals View on Jeju Chain\n');
     
-    // Connect wallet
+    // Connect wallet to Jeju
     await page.goto('/');
     await page.getByRole('button', { name: /connect/i }).first().click();
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(2000);
     await wallet.approve();
     await page.waitForTimeout(4000);

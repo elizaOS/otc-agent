@@ -42,6 +42,9 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_E2E_TEST: '1',
       NODE_ENV: 'development',
+      NEXT_PUBLIC_JEJU_RPC_URL: 'http://127.0.0.1:9545',
+      NEXT_PUBLIC_JEJU_NETWORK: 'localnet',
+      NETWORK: 'jeju-localnet',
     },
   },
 });

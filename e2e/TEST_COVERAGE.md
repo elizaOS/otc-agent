@@ -46,7 +46,7 @@
 | Feature | Implementation | Status |
 |---------|---------------|--------|
 | Wallet Connection | Dappwright + MetaMask | ✅ Automated |
-| Network Switching | Hardhat ↔ Base | ✅ Automated |
+| Network Switching | Anvil ↔ Base | ✅ Automated |
 | Transaction Signing | Sign, Approve, Reject | ✅ Automated |
 | Contract Reads | Balance, offers, state | ✅ Automated |
 | Contract Writes | Create offer, fulfill, claim | ✅ Automated |

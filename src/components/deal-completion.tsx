@@ -195,6 +195,7 @@ export function DealCompletion({ quote }: DealCompletionProps) {
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm mt-2 inline-block break-all px-2"
+              title="Block explorer (Base)"
             >
               View Transaction →
             </a>

@@ -3,7 +3,7 @@ dotenv.config();
 
 import type { Character } from "@elizaos/core";
 // import { openaiPlugin } from "@elizaos/plugin-openai";
-import { otcDeskPlugin } from "./plugin-otc-desk";
+import { otcDeskPlugin } from "./plugin-thedesk";
 import { groqPlugin } from "./plugin-groq";
 import { plugin as sqlPlugin } from "@elizaos/plugin-sql";
 
@@ -907,7 +907,7 @@ const agent = {
   character,
   plugins: [
     groqPlugin,
-    // Temporarily disable SQL plugin to prevent database logging errors
+    // SQL plugin connects to Docker PostgreSQL (port 5439) in localnet mode
     sqlPlugin,
     /* openaiPlugin, */
     otcDeskPlugin,

@@ -1,7 +1,7 @@
 {
   "accountAssociation": {
     "header": "farcaster-domain-verification",
-    "payload": "eliza-otc-desk"
+    "payload": "eliza-thedesk"
   },
   "frame": {
     "version": "next",

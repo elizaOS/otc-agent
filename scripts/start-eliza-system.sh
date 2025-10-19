@@ -72,8 +72,7 @@ main() {
     fi
     
     # Check for required tools
-    command -v node >/dev/null 2>&1 || { log "❌ Node.js is required but not installed." "$RED"; exit 1; }
-    command -v npm >/dev/null 2>&1 || { log "❌ npm is required but not installed." "$RED"; exit 1; }
+    command -v bun >/dev/null 2>&1 || { log "❌ Bun is required but not installed. Install from https://bun.sh" "$RED"; exit 1; }
     
     log "  ✓ Environment check complete" "$GREEN"
     
@@ -83,7 +82,7 @@ main() {
     
     if [ ! -d "node_modules" ]; then
         log "  Installing project dependencies..." "$YELLOW"
-        npm install
+        bun install
     else
         log "  ✓ Dependencies already installed" "$GREEN"
     fi
@@ -92,30 +91,30 @@ main() {
     cd "$PROJECT_ROOT/contracts"
     if [ ! -d "node_modules" ]; then
         log "  Installing contract dependencies..." "$YELLOW"
-        npm install
+        bun install
     else
         log "  ✓ Contract dependencies already installed" "$GREEN"
     fi
     
     # Step 3: Compile contracts
     log "\n3️⃣ Compiling smart contracts..." "$BLUE"
-    npm run compile
+    bun run compile
     log "  ✓ Contracts compiled" "$GREEN"
     
-    # Step 4: Start Hardhat node
-    log "\n4️⃣ Starting Hardhat node..." "$BLUE"
+    # Step 4: Start Anvil node
+    log "\n4️⃣ Starting Anvil node..." "$BLUE"
     
-    if is_running "hardhat node"; then
-        log "  ✓ Hardhat node already running" "$GREEN"
+    if is_running "anvil"; then
+        log "  ✓ Anvil node already running" "$GREEN"
     else
-        log "  Starting Hardhat node in background..." "$YELLOW"
-        npm run start > "$PROJECT_ROOT/hardhat.log" 2>&1 &
+        log "  Starting Anvil node in background..." "$YELLOW"
+        "$PROJECT_ROOT/scripts/start-anvil.sh" > "$PROJECT_ROOT/anvil.log" 2>&1 &
         sleep 5
         
-        if is_running "hardhat node"; then
-            log "  ✓ Hardhat node started" "$GREEN"
+        if is_running "anvil"; then
+            log "  ✓ Anvil node started" "$GREEN"
         else
-            log "  ❌ Failed to start Hardhat node" "$RED"
+            log "  ❌ Failed to start Anvil node" "$RED"
             exit 1
         fi
     fi
@@ -126,7 +125,7 @@ main() {
     if [ -f "$PROJECT_ROOT/contracts/deployments/eliza-otc-deployment.json" ]; then
         log "  Contracts already deployed, skipping..." "$YELLOW"
     else
-        npm run deploy:eliza
+        bun run deploy:eliza
         log "  ✓ Contracts deployed successfully" "$GREEN"
     fi
     
@@ -144,10 +143,10 @@ main() {
         log "  ✓ Next.js already running" "$GREEN"
     else
         log "  Starting Next.js in development mode..." "$YELLOW"
-        npm run dev > "$PROJECT_ROOT/nextjs.log" 2>&1 &
+        bun run dev > "$PROJECT_ROOT/nextjs.log" 2>&1 &
         
         # Wait for Next.js to be ready
-        wait_for_service "Next.js" "http://localhost:3000"
+        wait_for_service "Next.js" "http://localhost:2222"
     fi
     
     # Step 8: Start the Eliza agent
@@ -157,7 +156,7 @@ main() {
         log "  ✓ Eliza agent already running" "$GREEN"
     else
         log "  Starting Eliza agent..." "$YELLOW"
-        npm run eliza:dev > "$PROJECT_ROOT/eliza.log" 2>&1 &
+        bun run eliza:dev > "$PROJECT_ROOT/eliza.log" 2>&1 &
         sleep 3
         log "  ✓ Eliza agent started" "$GREEN"
     fi
@@ -174,7 +173,7 @@ main() {
     header "✨ SYSTEM READY!"
     
     log "${BOLD}📊 System Status:${NC}" "$GREEN"
-    log "  • Hardhat Node: ${GREEN}✓ Running${NC}"
+    log "  • Anvil Node: ${GREEN}✓ Running${NC}"
     log "  • elizaOS Token: ${GREEN}✓ Deployed${NC}"
     log "  • OTC Contract: ${GREEN}✓ Deployed${NC}"
     log "  • Approval Worker: ${GREEN}✓ Active${NC}"
@@ -183,8 +182,8 @@ main() {
     
     echo
     log "${BOLD}🔗 Access Points:${NC}" "$BLUE"
-    log "  • Web Interface: ${CYAN}http://localhost:3000${NC}"
-    log "  • Agent Chat: ${CYAN}http://localhost:3000${NC}"
+    log "  • Web Interface: ${CYAN}http://localhost:2222${NC}"
+    log "  • Agent Chat: ${CYAN}http://localhost:2222${NC}"
     
     if [ ! -z "$OTC_ADDRESS" ]; then
         echo
@@ -202,13 +201,13 @@ main() {
     
     echo
     log "${BOLD}📚 Useful Commands:${NC}" "$CYAN"
-    log "  • Run E2E Test: ${NC}cd contracts && npm run test:e2e"
+    log "  • Run E2E Test: ${NC}cd contracts && bun run test:e2e"
     log "  • View Logs: ${NC}tail -f *.log"
     log "  • Stop All: ${NC}./scripts/stop-eliza-system.sh"
     
     echo
     log "${BOLD}🎯 Next Steps:${NC}" "$GREEN"
-    log "  1. Open http://localhost:3000 in your browser"
+    log "  1. Open http://localhost:2222 in your browser"
     log "  2. Connect your wallet (or use the test wallet)"
     log "  3. Start chatting with the agent to negotiate a deal"
     log "  4. The system will automatically approve and process your offers"

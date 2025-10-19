@@ -1,8 +1,8 @@
 /**
- * Complete E2E Flow with REAL MetaMask Wallet
+ * Complete E2E Flow with REAL MetaMask Wallet on Jeju Chain
  * 
  * Tests the full user journey:
- * 1. Connect MetaMask wallet
+ * 1. Connect MetaMask wallet to Jeju
  * 2. Negotiate quote via agent chat
  * 3. Accept quote and sign transaction
  * 4. Verify contract state
@@ -15,6 +15,10 @@ base.setTimeout(600000);
 import { BrowserContext } from 'playwright-core';
 import { bootstrap, Dappwright, getWallet, MetaMaskWallet } from '@tenkeylabs/dappwright';
 
+// Use Jeju Localnet for testing (default network)
+const JEJU_RPC = process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://127.0.0.1:9545';
+const JEJU_CHAIN_ID = 1337;
+
 // Extend base test with wallet fixture
 export const test = base.extend<{ wallet: Dappwright }, { walletContext: BrowserContext }>({
   walletContext: [
@@ -23,20 +27,20 @@ export const test = base.extend<{ wallet: Dappwright }, { walletContext: Browser
       const [wallet, _, context] = await bootstrap('', {
         wallet: 'metamask',
         version: MetaMaskWallet.recommendedVersion,
-        // Hardhat account #0 (has funds)
+        // Test account (has funds on Jeju localnet)
         seed: 'test test test test test test test test test test test junk',
         headless: false, // Show browser for debugging
       });
 
-      // Add Hardhat network to MetaMask
+      // Add Jeju Localnet network to MetaMask
       await wallet.addNetwork({
-        networkName: 'Hardhat',
-        rpc: 'http://127.0.0.1:8545',
-        chainId: 31337,
+        networkName: 'Jeju Localnet',
+        rpc: JEJU_RPC,
+        chainId: JEJU_CHAIN_ID,
         symbol: 'ETH',
       });
 
-      await wallet.switchNetwork('Hardhat');
+      await wallet.switchNetwork('Jeju Localnet');
 
       await use(context);
       await context.close();
@@ -64,19 +68,21 @@ test.describe('Complete E2E Flow with Real Wallet', () => {
   test('should complete full quote → accept → pay → claim flow', async ({ page, wallet }) => {
     console.log('\n🚀 Starting Complete E2E Flow Test\n');
 
-    // Step 1: Connect wallet
-    console.log('1️⃣  Connecting MetaMask wallet...');
+    // Step 1: Connect wallet to Jeju
+    console.log('1️⃣  Connecting MetaMask wallet to Jeju...');
     
-    // Click connect button and choose EVM (Base/Hardhat)
+    // Click connect button and choose EVM, then Jeju
     await page.click('button:has-text("Connect Wallet")');
-    await page.getByRole('button', { name: /base/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /jeju/i }).click();
     await page.waitForTimeout(1000);
 
-    // Approve connection in MetaMask (RainbowKit connect)
+    // Approve connection in MetaMask (Privy connect)
     await wallet.approve();
     await page.waitForTimeout(3000);
     
-    console.log('   ✅ Wallet connected\n');
+    console.log('   ✅ Wallet connected to Jeju\n');
 
     // Step 2: Seed a quote via API for deterministic E2E
     console.log('2️⃣  Seeding quote via API...');
