@@ -517,13 +517,13 @@ export function MyDealsContent() {
         </div> */}
         <div className="bg-[#101010] rounded-xl border-[1px] border-[#353535] min-h-[330px] h-fit max-w-6xl mx-auto space-y-4 sm:space-y-6">
           {/* card header */}
-          <div className="px-12 gap-x-4 mt-5 flex flex-col lg:flex-row w-full">
+          <div className="px-4 md:px-8 xl:px-12 gap-x-4 mt-5 flex flex-row w-full">
             <div className="w-full flex flex-row place-items-center lg:w-2/5">
               <div className="flex flex-col">
                 <h1 className="text-white font-normal text-[16px]">
                   Total Bonded Value
                 </h1>
-                <p className="text-white text-[32px] font-bold">
+                <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
                   32,202{" "}
                   <span className="text-white text-[16px] font-bold">USD</span>
                 </p>
@@ -536,7 +536,9 @@ export function MyDealsContent() {
                 <h1 className="text-white font-normal text-[16px]">
                   Total Deals
                 </h1>
-                <p className="text-white text-[32px] font-bold">3</p>
+                <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
+                  3
+                </p>
               </div>
               <div className="hidden lg:block ml-auto border-l-[1px] border-white/10 h-full" />
             </div>
@@ -545,7 +547,9 @@ export function MyDealsContent() {
               <h1 className="text-white font-normal text-[16px]">
                 Average Discount
               </h1>
-              <p className="text-white text-[32px] font-bold">18.3%</p>
+              <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
+                18.3%
+              </p>
             </div>
           </div>
           <div className="w-full border-t-2 border-dashed border-white/20" />
@@ -570,6 +574,7 @@ export function MyDealsContent() {
                   </TableHead>
                 </TableRow>
               </TableHeader>
+              <div className="w-full border-t-[1px] border-[#121A08]" />
               <TableBody>
                 <TableRow className="border-white/10 hover:bg-white/5 ">
                   <TableCell className="text-white font-normal text-[12px] w-1/4 p-0">
