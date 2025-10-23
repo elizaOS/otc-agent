@@ -7,6 +7,19 @@ import { useMultiWallet } from "@/components/multiwallet";
 import { MyListingsTab } from "@/components/my-listings-tab";
 import { useOTC } from "@/hooks/contracts/useOTC";
 import { resumeFreshAuth } from "@/utils/x-share";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/table";
+import { Tab } from "@headlessui/react";
+import Image from "next/image";
+import { OffchainLookupResponseMalformedError } from "node_modules/viem/_types/errors/ccip";
+import { ArrowUp, SortAsc } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function formatDate(tsSeconds: bigint): string {
   const d = new Date(Number(tsSeconds) * 1000);
@@ -42,7 +55,7 @@ export function MyDealsContent() {
     emergencyRefundsEnabled,
   } = useOTC();
   const [activeTab, setActiveTab] = useState<"purchases" | "listings">(
-    "purchases",
+    "purchases"
   );
   const [sortAsc, setSortAsc] = useState(true);
   const [refunding, setRefunding] = useState<bigint | null>(null);
@@ -50,6 +63,7 @@ export function MyDealsContent() {
   const [evmDeals, setEvmDeals] = useState<any[]>([]);
   const [myListings, setMyListings] = useState<any[]>([]);
 
+  console.log("sorting ->", sortAsc);
   const refreshListings = useCallback(async () => {
     const walletAddr =
       activeFamily === "solana"
@@ -65,10 +79,10 @@ export function MyDealsContent() {
 
     const [dealsRes, consignmentsRes] = await Promise.all([
       fetch(`/api/deal-completion?wallet=${walletAddr}`).then((res) =>
-        res.json(),
+        res.json()
       ),
       fetch(`/api/consignments?consigner=${walletAddr}`).then((res) =>
-        res.json(),
+        res.json()
       ),
     ]);
 
@@ -93,7 +107,7 @@ export function MyDealsContent() {
     if (activeFamily === "solana") {
       console.log(
         "[MyDeals] Using Solana deals from database:",
-        solanaDeals.length,
+        solanaDeals.length
       );
 
       if (solanaDeals.length === 0) {
@@ -121,7 +135,7 @@ export function MyDealsContent() {
           "[MyDeals] Token amount:",
           tokenAmountRaw,
           "→",
-          tokenAmountBigInt.toString(),
+          tokenAmountBigInt.toString()
         );
 
         return {
@@ -163,7 +177,7 @@ export function MyDealsContent() {
       // Only show executed or approved deals (in-progress)
       if (deal.status !== "executed" && deal.status !== "approved") {
         console.log(
-          `[MyDeals] Skipping deal ${deal.quoteId} with status: ${deal.status}`,
+          `[MyDeals] Skipping deal ${deal.quoteId} with status: ${deal.status}`
         );
         continue;
       }
@@ -176,7 +190,7 @@ export function MyDealsContent() {
       if (contractOffer) {
         // We have both database and contract data - use contract structure with quoteId
         console.log(
-          `[MyDeals] Matched DB deal ${deal.quoteId} to contract offer ${deal.offerId}`,
+          `[MyDeals] Matched DB deal ${deal.quoteId} to contract offer ${deal.offerId}`
         );
 
         result.push({
@@ -191,7 +205,7 @@ export function MyDealsContent() {
         // Database deal without matching contract offer (possibly old data or Solana)
         // Transform to match offer structure
         console.log(
-          `[MyDeals] Using DB-only deal ${deal.quoteId} (no contract match)`,
+          `[MyDeals] Using DB-only deal ${deal.quoteId} (no contract match)`
         );
 
         const createdTs = deal.createdAt
@@ -256,7 +270,7 @@ export function MyDealsContent() {
       ...filteredContractOnly.map((o) => ({
         ...o,
         quoteId: undefined, // No quoteId - will use API fallback
-      })),
+      }))
     );
 
     console.log("[MyDeals] Final combined deals:", {
@@ -280,6 +294,33 @@ export function MyDealsContent() {
     list.sort((a, b) => Number(a.unlockTime) - Number(b.unlockTime));
     return sortAsc ? list : list.reverse();
   }, [inProgress, sortAsc]);
+
+  const totalBondedValue = useMemo(() => {
+    if (!inProgress.length) return 0;
+
+    const total = inProgress.reduce(
+      (acc, deal) => acc + BigInt(deal.tokenAmount || 0n),
+      0n
+    );
+
+    const totalFormatted = Number(total) / 1e18;
+
+    return totalFormatted;
+  }, [inProgress]);
+
+  const averageDiscount = useMemo(() => {
+    if (!inProgress.length) return 0;
+
+    const totalDiscount = inProgress.reduce(
+      (acc, deal) => acc + Number(deal.discountBps || 0),
+      0
+    );
+
+    const avgBps = totalDiscount / inProgress.length;
+    const avgPercent = avgBps / 100;
+
+    return avgPercent;
+  }, [inProgress]);
 
   // Resume pending share if coming back from OAuth 1.0a
   useMemo(() => {
@@ -306,200 +347,128 @@ export function MyDealsContent() {
 
   return (
     <>
-      <main className="flex-1 px-3 sm:px-4 md:px-6 py-4 sm:py-6">
-        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl sm:text-2xl font-semibold">My Deals</h1>
+      <main className="flex-1 px-3 sm:px-4 md:px-6 py-4 sm:py-24">
+        <div className="bg-[#101010] rounded-xl border-[1px] border-[#353535] min-h-[330px] h-fit max-w-6xl mx-auto space-y-4 sm:space-y-6">
+          {/* card header */}
+          <div className="w-full flex flex-col gap-y-2 lg:flex-row lg:gap-x-4 px-4 md:px-8 xl:px-12 mt-5">
+            <div className="w-full flex flex-row place-items-center lg:w-2/5 border-b border-white/10 pb-4 lg:border-none lg:pb-0">
+              <div className="flex flex-col">
+                <h1 className="text-white font-normal text-[16px]">
+                  Total Bonded Value
+                </h1>
+                <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
+                  {inProgress.length === 0 || isLoading
+                    ? "-"
+                    : `${totalBondedValue} USD`}
+                </p>
+              </div>
+              <div className="hidden lg:block ml-auto border-l-[1px] border-white/10 h-full" />
+            </div>
+
+            <div className="w-full flex flex-row place-items-start lg:w-2/5 border-b border-white/10 pb-4 lg:border-none lg:pb-0">
+              <div className="flex flex-col">
+                <h1 className="text-white font-normal text-[16px]">
+                  Total Deals
+                </h1>
+                <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
+                  {isLoading
+                    ? "-"
+                    : inProgress.length === 0
+                      ? "0"
+                      : inProgress.length}
+                </p>
+              </div>
+              <div className="hidden lg:block ml-auto border-l-[1px] border-white/10 h-full" />
+            </div>
+
+            <div className="w-full place-items-start lg:w-2/5 pb-4">
+              <h1 className="text-white font-normal text-[16px]">
+                Average Discount
+              </h1>
+              <p className="text-white text-[20px] md:text-[24px] lg:text-[32px] font-bold">
+                {inProgress.length === 0 || isLoading
+                  ? "-"
+                  : `${averageDiscount}%`}
+              </p>
+            </div>
           </div>
+          <div className="w-full border-t-2 border-dashed border-white/20" />
+          <div className="px-0 pb-6">
+            <Table className="w-full place-self-center text-left">
+              <TableHeader>
+                {sorted.length === 0 ? (
+                  <h1 className="place-self-center">no current deals</h1>
+                ) : (
+                  <TableRow className="border-white/10 hover:bg-transparent">
+                    <TableHead className="font-medium w-1/4 px-3">
+                      Amount $Eliza
+                    </TableHead>
+                    <TableHead
+                      onClick={() => setSortAsc(!sortAsc)}
+                      className="flex flex-row  items-center text-white/70 hover:text-white cursor-pointer font-medium w-1/4 px-4"
+                    >
+                      Maturity Date
+                      <ArrowUp
+                        className={cn("ml-2", sortAsc && "rotate-180")}
+                        size={15}
+                      />
+                    </TableHead>
+                    <TableHead className="text-white/70 font-medium w-1/4 px-4">
+                      Negotiated Discount
+                    </TableHead>
+                    <TableHead className="text-white/70 font-medium w-1/4 ">
+                      Negotiated Maturity
+                    </TableHead>
+                  </TableRow>
+                )}
+              </TableHeader>
+              {sorted.length === 0 ? null : (
+                <div className="w-full border-t-[1px] border-[#121A08]" />
+              )}
+              <TableBody>
+                {sorted.length === 0
+                  ? null
+                  : sorted.map((o, index) => {
+                      const now = Math.floor(Date.now() / 1000);
+                      const matured = Number(o.unlockTime) <= now;
+                      const discountPct = Number(o.discountBps ?? 0n) / 100;
+                      const lockup = getLockupLabel(o.createdAt, o.unlockTime);
+                      const uniqueKey =
+                        (o as any).quoteId ||
+                        o.id.toString() ||
+                        `deal-${index}`;
 
-          <div className="flex gap-3 sm:gap-4 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("purchases")}
-              className={`px-3 sm:px-4 py-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
-                activeTab === "purchases"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-zinc-600 dark:text-zinc-400"
-              }`}
-            >
-              My Purchases
-            </button>
-            <button
-              onClick={() => setActiveTab("listings")}
-              className={`px-3 sm:px-4 py-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
-                activeTab === "listings"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-zinc-600 dark:text-zinc-400"
-              }`}
-            >
-              My Listings
-            </button>
+                      return (
+                        <TableRow className="border-white/10 hover:bg-white/5">
+                          <TableCell className="text-white font-normal text-[12px] w-1/4 p-0">
+                            <div className="py-1 px-3">
+                              {formatTokenAmount(o.tokenAmount)}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-white font-normal text-[12px] w-1/4 p-0">
+                            <div className="py-1 px-3 whitespace-nowrap">
+                              {formatDate(o.unlockTime)}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-white w-1/4 p-0">
+                            <div className="bg-[#0A95421F] text-[12px] py-1 px-3 text-[#78FF75] font-bold h-fit w-fit rounded-xl">
+                              {discountPct.toFixed(0)}%
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-white w-1/4 p-0 whitespace-nowrap">
+                            <div className="flex items-center whitespace-nowrap text-[12px] bg-[#9393931F] py-1 -ml-5 px-3 text-white font-bold h-fit w-fit rounded-xl">
+                              {lockup}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+              </TableBody>
+            </Table>
           </div>
-
-          {activeTab === "listings" ? (
-            <MyListingsTab listings={myListings} onRefresh={refreshListings} />
-          ) : isLoading ? (
-            <div className="text-zinc-600 dark:text-zinc-400">
-              Loading deals…
-            </div>
-          ) : inProgress.length === 0 ? (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 text-zinc-600 dark:text-zinc-400">
-              No active deals. Create one from the chat to get started.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sorted.map((o, index) => {
-                const now = Math.floor(Date.now() / 1000);
-                const matured = Number(o.unlockTime) <= now;
-                const discountPct = Number(o.discountBps ?? 0n) / 100;
-                const lockup = getLockupLabel(o.createdAt, o.unlockTime);
-                const uniqueKey =
-                  (o as any).quoteId || o.id.toString() || `deal-${index}`;
-
-                return (
-                  <div
-                    key={uniqueKey}
-                    className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                          Amount
-                        </div>
-                        <div className="font-semibold">
-                          {formatTokenAmount(o.tokenAmount)} tokens
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                          Maturity Date
-                        </div>
-                        <div className="font-semibold">
-                          {formatDate(o.unlockTime)}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                          Discount
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
-                          {discountPct.toFixed(0)}%
-                        </span>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                          Lockup Duration
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 text-xs font-medium">
-                          {lockup}
-                        </span>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-                          Status
-                        </div>
-                        {matured ? (
-                          <span className="inline-flex items-center rounded-full bg-orange-600/15 text-orange-700 dark:text-orange-400 px-2 py-0.5 text-xs font-medium">
-                            Ready to Claim
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-amber-600/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 text-xs font-medium">
-                            Locked
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                      <Button
-                        color="zinc"
-                        onClick={async () => {
-                          if (o.quoteId) {
-                            window.location.href = `/deal/${o.quoteId}`;
-                            return;
-                          }
-
-                          console.log(
-                            "[MyDeals] No quoteId, looking up by offerId:",
-                            o.id?.toString(),
-                          );
-
-                          const response = await fetch(
-                            `/api/quote/by-offer/${o.id}`,
-                          );
-                          if (response.redirected) {
-                            window.location.href = response.url;
-                          } else if (response.ok) {
-                            const data = await response.json();
-                            if (data.quoteId) {
-                              window.location.href = `/deal/${data.quoteId}`;
-                            } else {
-                              throw new Error("No quoteId in response");
-                            }
-                          } else {
-                            throw new Error(
-                              `Failed to lookup quote: ${response.status}`,
-                            );
-                          }
-                        }}
-                        className="!px-4 !py-2"
-                      >
-                        View Deal
-                      </Button>
-                      {matured && (
-                        <Button
-                          color="orange"
-                          disabled={isClaiming}
-                          onClick={async () => {
-                            await claim(o.id);
-                          }}
-                          className="!px-4 !py-2"
-                        >
-                          {isClaiming ? "Withdrawing…" : "Withdraw"}
-                        </Button>
-                      )}
-                      {emergencyRefundsEnabled && !matured && (
-                        <Button
-                          color="red"
-                          disabled={refunding === o.id}
-                          onClick={async () => {
-                            const createdAt = Number(o.createdAt);
-                            const now = Math.floor(Date.now() / 1000);
-                            const daysSinceCreation =
-                              (now - createdAt) / (24 * 60 * 60);
-
-                            if (daysSinceCreation < 90) {
-                              alert(
-                                `Emergency refund available in ${Math.ceil(90 - daysSinceCreation)} days`,
-                              );
-                              return;
-                            }
-
-                            if (
-                              confirm(
-                                "Request emergency refund? This will cancel the deal and return your payment.",
-                              )
-                            ) {
-                              setRefunding(o.id);
-                              await emergencyRefund(o.id);
-                              alert("Refund successful!");
-                            }
-                          }}
-                          title="Request emergency refund (90+ days)"
-                          className="!px-4 !py-2"
-                        >
-                          {refunding === o.id ? "Refunding..." : "Refund"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </main>
     </>

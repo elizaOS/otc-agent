@@ -43,7 +43,7 @@ export function TableHead({
       {...props}
       className={clsx(
         className,
-        "text-left text-sm/6 font-semibold text-zinc-950 dark:text-white",
+        "text-left text-sm/6 font-normal text-[#7D7D7D] dark:text-[#7D7D7D]",
       )}
     />
   );
