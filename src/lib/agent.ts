@@ -3,7 +3,7 @@ dotenv.config();
 
 import type { Character } from "@elizaos/core";
 // import { openaiPlugin } from "@elizaos/plugin-openai";
-import { otcDeskPlugin } from "./plugin-thedesk";
+import { otcDeskPlugin } from "./plugin-otc-desk";
 import { groqPlugin } from "./plugin-groq";
 import { plugin as sqlPlugin } from "@elizaos/plugin-sql";
 
