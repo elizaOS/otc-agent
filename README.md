@@ -24,28 +24,46 @@ All references to Hardhat have been replaced with Anvil. See contracts directory
 
 ## Prerequisites
 
-Before running the OTC Agent, you MUST start the PostgreSQL database:
+The OTC Agent requires PostgreSQL with pgvector extension. **The database starts automatically** when you run `bun run dev` - no manual setup required!
 
+### Automatic Database Startup ✨
+
+Simply run:
 ```bash
-cd apps/thedesk
-docker-compose -f docker-compose.localnet.yml up -d postgres
+cd vendor/otc-desk
+bun run dev
 ```
 
-This starts a PostgreSQL container on port 5439 with the database configuration the agent expects. The database is required for:
-- Agent runtime initialization (ElizaOS framework)
-- Quote storage and management
-- User session management
+The app will be available at **http://localhost:5005**
 
-**Verify the database is running:**
+The startup script automatically:
+- ✅ Checks if PostgreSQL container exists
+- ✅ Starts it if stopped (or creates it if missing)
+- ✅ Waits for database to be ready
+- ✅ Then starts all other services
+
+### Manual Database Management (Optional)
+
+If you need manual control:
+
 ```bash
-docker-compose -f docker-compose.localnet.yml ps
-# Should show otc-postgres as "healthy"
+# Ensure database is running
+./scripts/ensure-postgres.sh
+
+# Check database status
+./scripts/check-postgres.sh
+
+# Or use npm scripts
+bun run db:ensure  # Start database if needed
+bun run db:check   # Check status only
 ```
 
 **To stop the database:**
 ```bash
-docker-compose -f docker-compose.localnet.yml down
+docker compose -f docker-compose.localnet.yml down
 ```
+
+**📚 For detailed database setup, troubleshooting, and production deployment, see [DATABASE_SETUP.md](./DATABASE_SETUP.md)**
 
 ## Supported Chains
 
@@ -150,7 +168,7 @@ Production supports any token via the token registration system.
 ## Structure
 
 - `src/lib/agent.ts` - Eliza character and negotiation logic
-- `src/lib/plugin-thedesk` - OTC plugin (providers, actions, quote service)
+- `src/lib/plugin-otc-desk` - OTC plugin (providers, actions, quote service)
 - `src/lib/chains.ts` - Jeju chain definitions (mainnet, testnet, localnet)
 - `src/lib/getChain.ts` - Centralized chain configuration
 - `src/app/api/*` - API routes
@@ -178,7 +196,7 @@ bun run db:push
 # Generate Solana keypair (first run only)
 cd solana/otc-program && solana-keygen new -o id.json && cd ../..
 
-# Start everything (Anvil + Solana + Next.js on :2222)
+# Start everything (Anvil + Solana + Next.js on :5005)
 bun run dev
 ```
 
@@ -229,7 +247,7 @@ This ensures a smooth user experience even when wallet interactions are rejected
 
 ## Environment
 
-Create a `.env.local` file in `apps/thedesk/` with the following configuration:
+Create a `.env.local` file in `vendor/otc-desk/` with the following configuration:
 
 ```env
 # EVM (Jeju L2)
@@ -243,7 +261,7 @@ NEXT_PUBLIC_SOLANA_PROGRAM_ID=<program id from deploy>
 
 # Privy (REQUIRED - Single auth provider for all wallets & social login)
 NEXT_PUBLIC_PRIVY_APP_ID=<your-privy-app-id>  # Get from dashboard.privy.io
-NEXT_PUBLIC_URL=http://localhost:2222  # or your production URL
+NEXT_PUBLIC_URL=http://localhost:5005  # or your production URL
 
 # Agent
 GROQ_API_KEY=<your key>
@@ -316,11 +334,11 @@ Your OTC desk supports multiple networks and authentication methods:
 1. Create account at [dashboard.privy.io](https://dashboard.privy.io/)
 2. Create new app, copy App ID
 3. Enable: Farcaster, Email, Google (User Management > Authentication)
-4. Add domains: `http://localhost:2222`, `https://farcaster.xyz`, your production URL
+4. Add domains: `http://localhost:5005`, `https://farcaster.xyz`, your production URL
 5. Set in `.env.local`:
    ```env
    NEXT_PUBLIC_PRIVY_APP_ID=your-app-id
-   NEXT_PUBLIC_URL=http://localhost:2222
+   NEXT_PUBLIC_URL=http://localhost:5005
    ```
 
 **Behavior:**
@@ -373,7 +391,7 @@ bun run tunnel
 
 ```bash
 # Development
-bun run dev              # Full stack (Anvil + Solana + Next.js on :2222)
+bun run dev              # Full stack (Anvil + Solana + Next.js on :5005)
 bun run db:push          # Apply DB schema
 bun run worker:start     # Quote approval worker
 
@@ -794,7 +812,7 @@ The OTC Agent automatically starts when launching Jeju development environment:
 
 ```bash
 cd /Users/shawwalters/jeju
-bun run dev  # OTC Agent auto-starts on http://localhost:2222
+bun run dev  # OTC Agent auto-starts on http://localhost:5005
 ```
 
-Configured in `/scripts/dev.ts` - detects `apps/thedesk` and launches automatically with Anvil.
+Configured in `/scripts/dev.ts` - detects `vendor/otc-desk` and launches automatically with Anvil.

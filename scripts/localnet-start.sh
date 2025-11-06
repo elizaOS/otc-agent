@@ -7,7 +7,7 @@ echo ""
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
-  echo "❌ Error: Must run from apps/thedesk directory"
+  echo "❌ Error: Must run from vendor/otc-desk directory"
   exit 1
 fi
 
@@ -49,7 +49,7 @@ if ! kill -0 $JEJU_PID 2>/dev/null; then
   exit 1
 fi
 
-cd apps/thedesk
+cd vendor/otc-desk
 
 # Wait for RPC to be ready
 echo ""
@@ -86,10 +86,27 @@ docker compose -f docker-compose.localnet.yml up -d || {
 }
 echo "✅ Docker services started"
 
-# Wait for database
+# Wait for database to be truly healthy
 echo ""
 echo "⏳ Waiting for database to be ready..."
-sleep 5
+RETRIES=0
+MAX_RETRIES=30
+while [ $RETRIES -lt $MAX_RETRIES ]; do
+  if docker exec otc-postgres pg_isready -U eliza > /dev/null 2>&1; then
+    echo "✅ PostgreSQL is ready!"
+    break
+  fi
+  RETRIES=$((RETRIES+1))
+  if [ $RETRIES -eq $MAX_RETRIES ]; then
+    echo "❌ Timeout waiting for PostgreSQL"
+    exit 1
+  fi
+  sleep 2
+  echo "  Retry $RETRIES/$MAX_RETRIES..."
+done
+
+# Give the database an extra moment to fully initialize
+sleep 2
 
 # Run database migrations (optional - may not exist in all setups)
 echo ""
@@ -98,10 +115,10 @@ if [ -f "../../packages/db/scripts/migrate.ts" ]; then
   cd ../../packages/db
   bun run scripts/migrate.ts || {
     echo "❌ ERROR: Database migration failed"
-    cd ../../apps/thedesk
+    cd ../../vendor/otc-desk
     exit 1
   }
-  cd ../../apps/thedesk
+  cd ../../vendor/otc-desk
   echo "✅ Migrations complete"
 else
   echo "⚠️  No migration script found - skipping (this is optional)"
@@ -115,12 +132,12 @@ echo "  - Jeju RPC:       http://127.0.0.1:9545"
 echo "  - Anvil RPC:      http://127.0.0.1:8545"
 echo "  - Solana RPC:     http://127.0.0.1:8899"
 echo "  - PostgreSQL:     localhost:5439"
-echo "  - OTC Agent:      http://localhost:2222 (after 'bun run dev')"
+echo "  - OTC Agent:      http://localhost:5005 (after 'bun run dev')"
 echo "  - Worker Service: http://localhost:3137"
 echo ""
 echo "🔧 Next steps:"
 echo "  1. Run 'bun run dev' to start the frontend"
-echo "  2. Open http://localhost:2222 in your browser"
+echo "  2. Open http://localhost:5005 in your browser"
 echo "  3. Connect your wallet (Jeju Localnet chain ID: 1337)"
 echo ""
 echo "💡 To stop localnet: ./scripts/localnet-stop.sh"

@@ -12,7 +12,7 @@ export type { ChatMessage } from "./chat-message";
 export type { Citation, ChatStreamData } from "./chat";
 
 // Re-export from plugin types
-export type { PaymentCurrency, QuoteStatus, QuoteMemory, UserSessionMemory as PluginUserSessionMemory } from "@/lib/plugin-thedesk/types";
+export type { PaymentCurrency, QuoteStatus, QuoteMemory, UserSessionMemory as PluginUserSessionMemory } from "@/lib/plugin-otc-desk/types";
 
 //==============================================================================
 // CHAIN TYPES

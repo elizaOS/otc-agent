@@ -3,7 +3,7 @@ export const siteConfig = {
   url:
     process.env.NEXT_PUBLIC_APP_URL ||
     "https://ai.eliza.how/" ||
-    "http://localhost:2222",
+    "http://localhost:5005",
   description:
     "Eliza is a powerful multi-agent simulation framework designed to create, deploy, and manage autonomous AI agents.",
   ogImage: "/og.png",

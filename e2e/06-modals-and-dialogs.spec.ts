@@ -57,9 +57,9 @@ test.describe('Network Selection Modal', () => {
     await page.waitForTimeout(1000);
     
     // Should show network selection
-    await expect(page.getByRole('button', { name: /evm/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /jeju/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /solana/i })).toBeVisible();
   });
 
@@ -85,9 +85,9 @@ test.describe('Network Selection Modal', () => {
     await page.getByRole('button', { name: /connect/i }).first().click();
     await page.waitForTimeout(1000);
     
-    const baseButton = page.getByRole('button', { name: /evm/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i });
+    const baseButton = page.getByRole('button', { name: /jeju/i });
     
     // Should have blue/Base branding
     const bgColor = await baseButton.evaluate(el => 
@@ -321,9 +321,9 @@ test.describe('Dialog Component Behavior', () => {
     await page.waitForTimeout(1000);
     
     // Should be visible
-    await expect(page.getByRole('button', { name: /evm/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /jeju/i })).toBeVisible();
     
     // Press Escape
     await page.keyboard.press('Escape');
@@ -358,10 +358,10 @@ test.describe('Dialog Component Behavior', () => {
     await page.waitForTimeout(1000);
     
     // Modal should be on top
-    const modal = page.locator('[role="dialog"]').or(
-      page.getByRole('button', { name: /evm/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i }).locator('..')
+    const modal = page.locator('[role="dialog"]').or(
+      page.getByRole('button', { name: /jeju/i }).locator('..')
     );
     
     if (await modal.first().isVisible({ timeout: 3000 }).catch(() => false)) {

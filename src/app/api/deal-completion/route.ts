@@ -1,7 +1,7 @@
 import otcArtifact from "@/contracts/artifacts/contracts/OTC.sol/OTC.json";
 import { agentRuntime } from "@/lib/agent-runtime";
 import { walletToEntityId } from "@/lib/entityId";
-import QuoteService from "@/lib/plugin-thedesk/services/quoteService";
+import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 import {
   DealCompletionService,
   type PaymentCurrency,

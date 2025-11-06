@@ -502,18 +502,16 @@ test.describe('Animation and Transition Coverage', () => {
     await page.waitForTimeout(500);
     
     // Should be visible and animated
-    await expect(page.getByRole('button', { name: /evm/i }).click();
+    await page.getByRole('button', { name: /evm/i }).click();
     await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /jeju/i })).toBeVisible();
     
     // Close
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
     
     // Should close smoothly
-    const isClosed = !await page.getByRole('button', { name: /evm/i }).click();
-    await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /jeju/i }).isVisible().catch(() => true);
+    const isClosed = !await page.getByRole('button', { name: /jeju/i }).isVisible().catch(() => true);
     expect(isClosed).toBe(true);
   });
 

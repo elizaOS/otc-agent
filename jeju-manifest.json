@@ -1,7 +1,9 @@
 {
-  "name": "thedesk",
+  "$schema": "../../jeju-manifest.schema.json",
+  "name": "otc-desk",
   "displayName": "OTC Trading Desk",
   "version": "1.0.0",
+  "type": "vendor",
   "description": "Over-the-counter trading desk for large token swaps",
   "commands": {
     "dev": "bun run dev",
@@ -9,12 +11,13 @@
     "start": "bun run start"
   },
   "ports": {
-    "main": 3003,
-    "api": 3004
+    "main": 5004,
+    "api": 5005
   },
   "dependencies": ["contracts", "config"],
   "optional": true,
   "enabled": true,
+  "autoStart": true,
   "tags": ["defi", "trading", "otc"]
 }
 

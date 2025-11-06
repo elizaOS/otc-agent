@@ -1,4 +1,4 @@
-import QuoteService from "@/lib/plugin-thedesk/services/quoteService";
+import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 import { IAgentRuntime, Memory, Provider, ProviderResult } from "@elizaos/core";
 import { agentRuntime } from "../../agent-runtime";
 import { walletToEntityId } from "../../entityId";

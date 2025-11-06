@@ -19,7 +19,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const TEST_TIMEOUT = 300000; // 5 minutes
-const BASE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:2222";
+const BASE_URL = process.env.NEXT_PUBLIC_URL || "http://localhost:5005";
 const EVM_RPC = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
 const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || "http://127.0.0.1:8899";
 

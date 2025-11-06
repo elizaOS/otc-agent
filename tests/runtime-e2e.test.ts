@@ -113,7 +113,7 @@ describe('System Architecture Verification', () => {
     // Check quote action
     const quoteActionPath = path.join(
       process.cwd(),
-      'src/lib/plugin-thedesk/actions/quote.ts'
+      'src/lib/plugin-otc-desk/actions/quote.ts'
     );
     expect(fs.existsSync(quoteActionPath)).toBe(true);
     
@@ -416,7 +416,7 @@ describe('Test Summary', () => {
     
     console.log('For Full Stack:');
     console.log('  1. npm run dev                        # Starts everything');
-    console.log('  2. Visit http://localhost:2222        # Test UI');
+    console.log('  2. Visit http://localhost:5005        # Test UI');
     console.log('  3. Connect wallet & create quote      # End-to-end flow');
     console.log('');
     

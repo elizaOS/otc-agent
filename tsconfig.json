@@ -30,7 +30,7 @@
     "eliza/**/*",
     "privy-frames-v2-demo/**/*",
     "src/agent.ts",
-    "src/lib/plugin-thedesk/**/*",
+    "src/lib/plugin-otc-desk/**/*",
     "src/plugin-groq.ts",
     "src/services/quoteApprovalWorker.ts",
     "dist/**/*",

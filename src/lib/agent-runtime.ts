@@ -75,7 +75,11 @@ class AgentRuntimeManager {
 
       // Initialize runtime with database configuration for SQL plugin
       // In localnet mode, connects to Docker PostgreSQL on port 5439
-      const DEFAULT_POSTGRES_URL = `postgres://eliza:password@localhost:${process.env.POSTGRES_DEV_PORT || 5439}/eliza`;
+      const dbPort = process.env.POSTGRES_DEV_PORT || process.env.VENDOR_OTC_DESK_DB_PORT || 5439;
+      const DEFAULT_POSTGRES_URL = `postgres://eliza:password@localhost:${dbPort}/eliza`;
+      
+      console.log(`[AgentRuntime] Database config: port=${dbPort}`);
+      
       // Use the existing agent ID from DB (b850bc30-45f8-0041-a00a-83df46d8555d)
       const RUNTIME_AGENT_ID = "b850bc30-45f8-0041-a00a-83df46d8555d" as UUID;
       this.runtime = new AgentRuntime({
@@ -149,11 +153,11 @@ class AgentRuntimeManager {
     await runtime.ensureConnection({
       entityId: entityUuid,
       roomId: roomId as UUID,
-      worldId: stringToUuid("thedesk-world"),
+      worldId: stringToUuid("otc-desk-world"),
       source: "web",
       type: ChannelType.DM,
       channelId: roomId,
-      serverId: "thedesk-server",
+      serverId: "otc-desk-server",
       userName: entityId,
     } as any);
 

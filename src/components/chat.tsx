@@ -60,7 +60,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
       setUserId(addr);
 
       // Load room for this wallet if we have one
-      const storedRoomId = localStorage.getItem(`thedesk-room-${addr}`);
+      const storedRoomId = localStorage.getItem(`otc-desk-room-${addr}`);
       if (storedRoomId && !initialRoomId) {
         setRoomId(storedRoomId);
       }
@@ -95,7 +95,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     setRoomId(newRoomId);
     // Persist room per-wallet
     if (entityId) {
-      localStorage.setItem(`thedesk-room-${entityId}`, newRoomId);
+      localStorage.setItem(`otc-desk-room-${entityId}`, newRoomId);
     }
     setMessages([]);
 
@@ -552,7 +552,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     if (!entityId) return;
 
     // Clear local storage for this wallet
-    localStorage.removeItem(`thedesk-room-${entityId}`);
+    localStorage.removeItem(`otc-desk-room-${entityId}`);
 
     // Create a new room
     const newRoomId = await createNewRoom();
@@ -585,7 +585,7 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
     }
 
     // Clear local storage for this wallet
-    localStorage.removeItem(`thedesk-room-${entityId}`);
+    localStorage.removeItem(`otc-desk-room-${entityId}`);
 
     // Create a new room
     const newRoomId = await createNewRoom();
@@ -615,8 +615,8 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
 
   const handleConnectEvm = useCallback(() => {
     console.log("[Chat] Opening EVM chain selector...");
-    localStorage.setItem("thedesk-connect-overlay-seen", "1");
-    localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
+    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
     setShowConnectOverlay(false);
     setShowEVMChainSelector(true);
   }, []);
@@ -627,8 +627,8 @@ export const Chat = ({ roomId: initialRoomId }: ChatProps = {}) => {
       alert("Please install Phantom or Solflare wallet to use Solana.");
       return;
     }
-    localStorage.setItem("thedesk-connect-overlay-seen", "1");
-    localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
+    localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+    localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
     setShowConnectOverlay(false);
     setActiveFamily("solana");
     connectSolanaWallet();
@@ -940,8 +940,8 @@ function ChatBody({
       <Dialog
         open={showConnectOverlay}
         onClose={() => {
-          localStorage.setItem("thedesk-connect-overlay-seen", "1");
-          localStorage.setItem("thedesk-connect-overlay-dismissed", "1");
+          localStorage.setItem("otc-desk-connect-overlay-seen", "1");
+          localStorage.setItem("otc-desk-connect-overlay-dismissed", "1");
           setShowConnectOverlay(false);
         }}
       >
@@ -994,9 +994,9 @@ function ChatBody({
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.setItem("thedesk-connect-overlay-seen", "1");
+                  localStorage.setItem("otc-desk-connect-overlay-seen", "1");
                   localStorage.setItem(
-                    "thedesk-connect-overlay-dismissed",
+                    "otc-desk-connect-overlay-dismissed",
                     "1",
                   );
                   setShowConnectOverlay(false);

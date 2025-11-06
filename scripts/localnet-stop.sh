@@ -23,7 +23,7 @@ else
   echo "⚠️  Jeju localnet stop script not found"
   echo "💡 You may need to manually stop the Jeju node process"
 fi
-cd apps/thedesk
+cd vendor/otc-desk
 
 echo ""
 echo "✅ Localnet stopped"

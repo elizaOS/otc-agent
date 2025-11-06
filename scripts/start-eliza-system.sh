@@ -146,7 +146,7 @@ main() {
         bun run dev > "$PROJECT_ROOT/nextjs.log" 2>&1 &
         
         # Wait for Next.js to be ready
-        wait_for_service "Next.js" "http://localhost:2222"
+        wait_for_service "Next.js" "http://localhost:5005"
     fi
     
     # Step 8: Start the Eliza agent

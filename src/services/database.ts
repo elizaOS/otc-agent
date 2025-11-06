@@ -1,7 +1,7 @@
 // Database service layer using Eliza runtime services
 
 import { agentRuntime } from "@/lib/agent-runtime";
-import type QuoteService from "@/lib/plugin-thedesk/services/quoteService";
+import type QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 import type {
   PaymentCurrency,
   QuoteMemory as Quote,

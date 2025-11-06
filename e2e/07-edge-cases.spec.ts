@@ -538,7 +538,7 @@ test.describe('State Management Edge Cases', () => {
     
     // Corrupt localStorage
     await page.evaluate(() => {
-      localStorage.setItem('thedesk-room-test', '{invalid json}');
+      localStorage.setItem('otc-desk-room-test', '{invalid json}');
       localStorage.setItem('activeFamily', 'invalid-family');
     });
     

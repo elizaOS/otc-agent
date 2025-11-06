@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { agentRuntime } from "@/lib/agent-runtime";
-import QuoteService from "@/lib/plugin-thedesk/services/quoteService";
+import QuoteService from "@/lib/plugin-otc-desk/services/quoteService";
 
 export async function GET(
   request: NextRequest,

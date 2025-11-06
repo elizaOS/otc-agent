@@ -39,7 +39,7 @@ if ! command -v cloudflared &> /dev/null; then
 fi
 
 # Check if local server is running
-PORT=${PORT:-2222}
+PORT=${PORT:-5005}
 if ! lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1 ; then
     echo -e "${YELLOW}⚠️  Local server not detected on port $PORT${NC}"
     echo -e "${YELLOW}Make sure to run 'npm run dev' in another terminal first${NC}"

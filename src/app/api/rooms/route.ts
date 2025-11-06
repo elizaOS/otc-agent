@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
     source: "web",
     type: "DM" as any,
     channelId: roomId,
-    serverId: "thedesk-server",
-    worldId: stringToUuid("thedesk-world") as any,
+    serverId: "otc-desk-server",
+    worldId: stringToUuid("otc-desk-world") as any,
     agentId: runtime.agentId,
   });
 
@@ -83,9 +83,9 @@ export async function POST(request: NextRequest) {
     name: entityId,
     source: "web",
     channelId: roomId,
-    serverId: "thedesk-server",
+    serverId: "otc-desk-server",
     type: "DM" as any,
-    worldId: stringToUuid("thedesk-world") as any,
+    worldId: stringToUuid("otc-desk-world") as any,
   });
 
   // Save initial quote to cache with consistent ID generation

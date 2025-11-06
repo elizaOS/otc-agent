@@ -103,7 +103,7 @@ describe('Full System Architecture', () => {
     // Quote action
     const quotePath = path.join(
       process.cwd(),
-      'src/lib/plugin-thedesk/actions/quote.ts'
+      'src/lib/plugin-otc-desk/actions/quote.ts'
     );
     const quoteCode = fs.readFileSync(quotePath, 'utf8');
     expect(quoteCode).not.toContain('createOTCOfferOnChain'); // No mocks!
