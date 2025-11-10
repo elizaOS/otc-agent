@@ -1,17 +1,28 @@
 {
-  "accountAssociation": {
-    "header": "farcaster-domain-verification",
-    "payload": "eliza-otc-desk"
-  },
   "frame": {
     "version": "next",
     "name": "Eliza OTC Desk",
-    "iconUrl": "https://yourapp.com/icon.png",
-    "homeUrl": "https://yourapp.com",
-    "imageUrl": "https://yourapp.com/opengraph-image.png",
-    "splashImageUrl": "https://yourapp.com/splash.png",
+    "iconUrl": "https://YOUR_VERCEL_URL/icon.png",
+    "homeUrl": "https://YOUR_VERCEL_URL",
+    "imageUrl": "https://YOUR_VERCEL_URL/opengraph-image.png",
+    "splashImageUrl": "https://YOUR_VERCEL_URL/splash.png",
     "splashBackgroundColor": "#000000",
-    "webhookUrl": "https://yourapp.com/api/webhook"
+    "webhookUrl": "https://api.neynar.com/f/app/c384db1a-a823-4279-9f77-2b1ea955b4e3/event",
+    "subtitle": "AI-Powered OTC Trading",
+    "description": "Trade tokens OTC with Eliza AI agent. Negotiate deals on Base, Jeju, and Solana networks with automated pricing and smart contracts.",
+    "primaryCategory": "utility",
+    "tags": ["defi", "trading", "ai", "otc", "base", "solana"],
+    "tagline": "AI-powered token trading desk",
+    "heroImageUrl": "https://YOUR_VERCEL_URL/opengraph-image.png",
+    "requiredChains": [
+      "eip155:8453",
+      "eip155:420691",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ]
+  },
+  "accountAssociation": {
+    "header": "farcaster-domain-verification",
+    "payload": "eliza-otc-desk"
   }
 }
 

@@ -146,6 +146,31 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "connect-src 'self' https://*.solana.com wss://*.solana.com https://*.helius-rpc.com https://*.drpc.org https://eth.merkle.io https://api.neynar.com https://farcaster.xyz https://client.farcaster.xyz https://warpcast.com https://wrpcd.net https://*.wrpcd.net wss://relay.farcaster.xyz https://auth.privy.io https://*.rpc.privy.systems https://explorer-api.walletconnect.com https://*.metamask.io https://*.coinbase.com https://api.developer.coinbase.com",
+              "font-src 'self' data:",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz",
+              "frame-src 'self'",
+            ].join('; '),
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -167,6 +192,10 @@ const nextConfig: NextConfig = {
       {
         source: '/eliza/:path(.*)',
         destination: 'https://elizaos.github.io/eliza/:path',
+      },
+      {
+        source: '/.well-known/farcaster.json',
+        destination: '/.well-known/farcaster.json',
       },
     ];
   },

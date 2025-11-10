@@ -3,6 +3,7 @@
 import { MultiWalletProvider } from "@/components/multiwallet";
 import { ChainResetMonitor } from "@/components/chain-reset-monitor";
 import { SolanaWalletProvider } from "@/components/solana-wallet-provider";
+import { MiniappProvider } from "@/components/miniapp-provider";
 import { config } from "@/lib/wagmi-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
@@ -57,44 +58,46 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <PrivyProvider
-        appId={privyAppId}
-        config={{
-          // Farcaster + available wallets (auto-detect what's installed)
-          loginMethods: ["farcaster", "wallet"],
-          // Support EVM wallets only (Solana handled by wallet-adapter)
-          appearance: {
-            theme: "light",
-            accentColor: "#0052ff",
-            walletChainType: "ethereum-only", // EVM only - Solana uses wallet-adapter
-            walletList: [
-              "detected_ethereum_wallets", // Detected wallets FIRST (MetaMask, Coinbase, etc.)
-              "wallet_connect",
-            ],
-          },
-          // Embedded wallets for users without external wallets
-          embeddedWallets: {
-            ethereum: {
-              createOnLogin: "users-without-wallets",
+      <MiniappProvider>
+        <PrivyProvider
+          appId={privyAppId}
+          config={{
+            // Farcaster + available wallets (auto-detect what's installed)
+            loginMethods: ["farcaster", "wallet"],
+            // Support EVM wallets only (Solana handled by wallet-adapter)
+            appearance: {
+              theme: "light",
+              accentColor: "#0052ff",
+              walletChainType: "ethereum-only", // EVM only - Solana uses wallet-adapter
+              walletList: [
+                "detected_ethereum_wallets", // Detected wallets FIRST (MetaMask, Coinbase, etc.)
+                "wallet_connect",
+              ],
             },
-          },
-          defaultChain: isDevelopment ? localhost : base,
-          supportedChains: isDevelopment
-            ? [localhost, base, mainnet]
-            : [base, mainnet],
-        }}
-      >
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
-            <SolanaWalletProvider>
-              <MultiWalletProvider>
-                <ChainResetMonitor />
-                {children}
-              </MultiWalletProvider>
-            </SolanaWalletProvider>
-          </QueryClientProvider>
-        </WagmiProvider>
-      </PrivyProvider>
+            // Embedded wallets for users without external wallets
+            embeddedWallets: {
+              ethereum: {
+                createOnLogin: "users-without-wallets",
+              },
+            },
+            defaultChain: isDevelopment ? localhost : base,
+            supportedChains: isDevelopment
+              ? [localhost, base, mainnet]
+              : [base, mainnet],
+          }}
+        >
+          <WagmiProvider config={config}>
+            <QueryClientProvider client={queryClient}>
+              <SolanaWalletProvider>
+                <MultiWalletProvider>
+                  <ChainResetMonitor />
+                  {children}
+                </MultiWalletProvider>
+              </SolanaWalletProvider>
+            </QueryClientProvider>
+          </WagmiProvider>
+        </PrivyProvider>
+      </MiniappProvider>
     </ThemeProvider>
   );
 }
